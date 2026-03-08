@@ -1,0 +1,157 @@
+HORIZON-CL6-2027-02-FARM2FORK-01: Increasing the Resilience of Agriculture in Water and Nutrient-Scarce Environments
+PAGE 1: EXPRESSION OF INTEREST AND STRATEGIC ALIGNMENT
+1.1 Introduction and Purpose of This Response
+
+Dear Innovation Manager at Bondalti Water,
+
+We write to express our strong interest in joining the consortium you are assembling for the Horizon Europe call HORIZON-CL6-2027-02-FARM2FORK-01, focused on increasing the resilience of agriculture in water and nutrient-scarce environments. Having carefully reviewed your partner search profile and the expected scope of this call under Cluster 6 – Farm to Fork, we believe there is a compelling alignment between your capabilities as an industrial technology integrator and our own expertise in [insert responding organisation's domain — for the purposes of this response, we present a model framework applicable to a research institution, agricultural advisory body, or complementary technology provider].
+
+This response is structured to: (i) demonstrate our understanding of the call's objectives and how your profile maps onto them; (ii) articulate the specific complementarities we bring; (iii) propose a collaborative architecture for the project; and (iv) outline practical next steps for partnership formalisation.
+1.2 Understanding of the Call and Its Expected Outcomes
+
+The HORIZON-CL6-2027-02 call sits within the broader Farm to Fork destination, targeting the development of resilient, resource-efficient agricultural systems capable of maintaining productivity under escalating water and nutrient scarcity driven by climate change, soil degradation, and geopolitical supply-chain disruptions for mineral fertilisers. The call is expected to prioritise:
+
+    Systemic approaches linking water management, nutrient circularity, and digital innovation across diverse pedoclimatic zones.
+    AI-enabled tools and decision-support systems that are accessible, trustworthy, and grounded in high-quality, FAIR-compliant data.
+    Demonstration and validation in real operational settings, with pathways to scalable adoption.
+    Multi-actor engagement, ensuring that farmers, advisors, and societal stakeholders co-design and validate solutions.
+    Social sciences and humanities (SSH) integration to address adoption barriers, inclusivity, and equity dimensions.
+
+Your profile at Bondalti Water addresses many of these priorities with notable depth, particularly at the intersection of water quality, reuse engineering, digital monitoring, and industrial translation — an intersection that is frequently underrepresented in research-heavy consortia.
+1.3 Strategic Fit with Bondalti Water's Profile
+
+We recognise Bondalti Water's distinctive positioning as a company that bridges R&I and deployable engineering — not merely a technology developer, but an integration partner capable of operating across the full chain from sensor hardware to data pipelines to decision-support outputs embedded in farm management information systems (FMIS). This is precisely the type of industrial anchor a competitive proposal under this call requires. Specifically, we see alignment across three strategic axes:
+
+    Axis 1 — Complementary expertise: Where Bondalti brings water/wastewater treatment engineering, IoT monitoring architectures, and AI-DSS development, we contribute [agronomic science / soil science / socio-economic analysis / regional demonstration infrastructure / policy interface — adapt as appropriate], creating a full-spectrum consortium.
+    Axis 2 — Geographic and pedoclimatic diversity: Competitive proposals will need to demonstrate solutions across multiple European climatic regions. Our operations in [Mediterranean / Continental / Atlantic / Nordic — specify] complement your Iberian base.
+    Axis 3 — Stakeholder reach: Our networks among farming cooperatives, advisory services, and regional authorities provide the multi-actor backbone the call demands.
+
+PAGE 2: COMPLEMENTARY CONTRIBUTIONS AND TECHNICAL SYNERGIES
+2.1 Responding to Bondalti's Five Capability Areas
+
+We structure our complementary contributions against the five areas you have outlined:
+
+Area 1 — Digital water & nutrient monitoring systems: Your strength in designing monitoring architectures for irrigation water quality and nutrient availability is a critical hardware-software backbone. We complement this with agronomic interpretation layers — translating sensor outputs into crop-specific nutrient demand models, phenological stage adjustments, and soil-water balance calculations. Our experience with heterogeneous farm typologies (small-scale, organic, mixed farming) ensures that the monitoring system design accounts for the diversity of end-user contexts the call expects. We also bring expertise in edge computing for low-connectivity environments, which aligns with your acknowledgment of connectivity limitations in field deployments.
+
+Area 2 — Reclaimed water and circular nutrient pathways: This is arguably one of the most innovative and policy-relevant dimensions of the proposal. Bondalti's capacity to engineer fit-for-purpose reuse configurations is essential, and we strengthen this with field-level agronomic trials assessing the long-term effects of reclaimed water irrigation on soil health, crop quality, microbial ecology, and nutrient accumulation. We also contribute regulatory navigation support, having worked closely with national authorities on the implementation of Regulation (EU) 2020/741 on minimum requirements for water reuse. This dual lens — engineering feasibility paired with agronomic evidence and regulatory compliance — significantly de-risks the circular water narrative for evaluators.
+
+Area 3 — AI-enabled decision support and digital twins: We bring domain-specific modelling capabilities in crop-water-nutrient dynamics (e.g., DSSAT, AquaCrop, APSIM frameworks) that can feed into or interoperate with Bondalti's AI-DSS architecture. Our researchers have published extensively on the calibration and validation of such models under deficit irrigation and variable nutrient regimes across Mediterranean and semi-arid contexts. For the digital twin component, we offer spatially explicit farm-level datasets (soil maps, microclimate records, yield histories) from our long-term experimental stations, which are invaluable for training and validating twin models.
+
+Area 4 — High-quality datasets for AI training (FAIR-by-design): We strongly endorse your commitment to FAIR-by-design data principles and note this as an increasingly weighted evaluation criterion. Our contribution includes existing curated datasets from multi-year field experiments (soil moisture, nutrient leaching, crop physiological responses, water quality parameters) that are already partially harmonised under previous EU project protocols. We propose jointly developing a data governance framework early in the project, defining collection standards, metadata schemas (aligned with INSPIRE and ISO 28258 for soil data), quality assurance/quality control (QA/QC) pipelines, and embargo/open-access timelines. We have a dedicated data steward with experience in Zenodo, EOSC, and domain-specific repositories.
+
+Area 5 — Translation to practice: affordability, trust, accessibility, and SSH: This is where many technically strong proposals fail — by treating SSH integration as a box-ticking exercise. We propose a genuine co-design methodology rooted in participatory action research, involving farmers and advisors from proposal stage through to validation. Our team includes social scientists specialising in technology adoption in agriculture, with published work on trust dynamics in digital farming tools, the role of peer networks in diffusion, and barriers faced by aging farmer populations and those with low digital literacy. We also have experience with inclusive design audits (accessibility for users with visual, motor, or cognitive impairments), which aligns with your mention of disability-inclusive design — a dimension that will distinguish the proposal.
+2.2 Cross-Cutting Contributions
+
+Beyond the five areas, we offer:
+
+    Life Cycle Assessment (LCA) and techno-economic analysis (TEA) capabilities to quantify the environmental and economic performance of proposed innovations versus baseline practices — critical for demonstrating expected impacts.
+    Policy brief and knowledge-brokering experience, facilitating uptake of project outputs into CAP Strategic Plans, River Basin Management Plans, and national fertiliser strategies.
+    Training and capacity-building programme design, including curricula for agricultural vocational education and training (VET) systems.
+
+PAGE 3: PROPOSED COLLABORATIVE ARCHITECTURE AND WORK PLAN LOGIC
+3.1 Consortium Composition Vision
+
+Based on the call's multi-actor and multi-disciplinary requirements, we envision a consortium of approximately 12–16 partners, structured around four functional clusters:
+Functional Cluster	Key Roles	Bondalti's Position	Our Position
+Technology & Integration	Sensor systems, data pipelines, AI-DSS, digital twins	Lead industrial integrator	Domain modelling, edge computing
+Agronomic Science & Field Trials	Crop-water-nutrient experiments, soil health, biodiversity	Reuse water quality assurance	Lead for agronomic validation
+Social Innovation & Adoption	SSH research, co-design, training, inclusive design	Trust/transparency contributor	SSH research lead or co-lead
+Demonstration & Upscaling	Pilot farms, living labs, multi-actor hubs	Demo/pilot leader (water)	Demo site provider (Region X)
+
+We recommend including partners from at least 4–5 pedoclimatic zones (e.g., Mediterranean semi-arid, Mediterranean sub-humid, Continental, Atlantic, and potentially a North African or Middle Eastern associated country to address the call's relevance to climate-vulnerable regions adjacent to Europe).
+3.2 Indicative Work Package Structure
+
+We propose the following WP logic, mapping directly to the call's expected outcomes:
+
+WP1 — Co-Design, Stakeholder Engagement and Governance (Lead: SSH partner)
+
+    Multi-actor needs assessment across demo regions
+    Co-design workshops with farmers, advisors, water utilities
+    Inclusive design requirements specification
+    Ethical and data governance frameworks
+
+WP2 — Integrated Monitoring Systems for Water and Nutrient Scarcity (Lead: Bondalti Water)
+
+    Design and deployment of sensor networks (soil, water, plant)
+    Integration protocols for FMIS/DSS interoperability
+    Low-connectivity and ruggedised deployment solutions
+
+WP3 — Circular Water and Nutrient Pathways (Lead: Bondalti Water, with strong agronomic input)
+
+    Reclaimed water treatment configuration design
+    Field trials assessing agronomic, soil, and environmental outcomes
+    Farmer-facing quality assurance protocols and risk communication
+
+WP4 — AI-Enabled Decision Support and Digital Twins (Co-lead: Bondalti + research partner)
+
+    AI/ML model development for irrigation scheduling, fertigation optimisation, pollution risk
+    Digital twin prototyping at demo farm scale
+    Scenario analysis under climate change projections
+
+WP5 — High-Quality Datasets and FAIR Data Infrastructure (Lead: Data-specialised partner or Bondalti)
+
+    Data collection standards, QA/QC, harmonisation
+    FAIR-compliant repository setup and curation
+    Open data publication plan with legal clarity
+
+WP6 — Multi-Site Demonstration and Validation (Lead: Regional demo coordinators)
+
+    Pilot deployment across 5+ pedoclimatic zones
+    Performance benchmarking (agronomic, economic, environmental)
+    Farmer feedback loops and iterative improvement
+
+WP7 — Adoption Pathways, Policy Interface and Upscaling (Lead: SSH/policy partner)
+
+    Adoption barrier analysis and enabling strategy design
+    LCA/TEA of innovations vs. baselines
+    Policy recommendations and knowledge brokerage
+    Training materials and VET integration
+
+WP8 — Project Management, Communication and Dissemination
+3.3 Role Clarification and Avoiding Overlap
+
+A common pitfall in large consortia is role duplication. We propose an early-stage responsibility assignment matrix (RACI) to ensure that Bondalti's industrial integration role is clearly delineated from research partners' modelling and agronomic functions, with explicit interface points (e.g., Bondalti delivers sensor data streams; research partners deliver crop model outputs; both converge in the DSS integration task).
+PAGE 4: IMPACT NARRATIVE, PRACTICAL CONSIDERATIONS AND NEXT STEPS
+4.1 Impact Alignment
+
+The proposal's impact narrative must convincingly address the call's expected outcomes. We see the following impact logic:
+
+    Short-term (project lifetime): Demonstrable reductions in water consumption (target: 20–30%) and mineral fertiliser use (target: 25–40%) at pilot sites, enabled by precision monitoring, AI-DSS, and circular water/nutrient integration.
+    Medium-term (3–5 years post-project): Scalable adoption across European farming systems through affordable, interoperable tools validated in diverse pedoclimatic zones, supported by training programmes and policy-ready recommendations.
+    Long-term (systemic): Contribution to EU water and nutrient resilience targets under the European Green Deal, Farm to Fork Strategy, Zero Pollution Action Plan, and CAP eco-scheme frameworks.
+
+The inclusion of reclaimed water as a resilience lever is particularly impactful in the current policy moment, given the revision of the Urban Wastewater Treatment Directive and the growing recognition that water reuse must be embedded in agricultural water security strategies — not treated as a niche option.
+4.2 Strengthening the Proposal: Recommendations
+
+Based on our experience with successful Horizon Europe proposals in Cluster 6, we offer the following recommendations for consortium development:
+
+    Secure a strong SSH partner early — not as an afterthought. Evaluation Study Groups consistently penalise proposals where SSH is relegated to a minor task. A dedicated SSH partner (preferably with agricultural sociology or science-and-technology-studies expertise) should co-author the co-design and adoption WPs from the start.
+
+    Ensure farmer organisations are formal partners, not merely "associated" — the multi-actor approach requires that farmers and their representatives are embedded in governance, not just consulted. At least 2–3 farmer cooperatives or producer organisations should be full beneficiaries.
+
+    Include an environmental/biodiversity assessment dimension — the call explicitly references pollution and biodiversity impacts. A partner with ecological monitoring capabilities (e.g., pollinator surveys, soil biodiversity indicators, freshwater ecology) strengthens the environmental credibility.
+
+    Plan the business model and exploitation strategy from Day 1 — Bondalti's industrial profile is a significant asset here. The proposal should articulate a credible commercialisation pathway for the DSS, monitoring systems, and reuse configurations, including licensing models, SaaS pricing, or integration into existing platform ecosystems.
+
+    Address the organic farming dimension — your keyword list includes organic farming, which is wise given the call's alignment with the Farm to Fork 25% organic target. Ensure at least one demo site operates under organic certification to test how proposed tools perform under organic constraints (no synthetic fertilisers, different pest/nutrient management logic).
+
+4.3 Budget and Effort Considerations
+
+For a Research and Innovation Action (RIA) under this call, we anticipate a total budget in the range of €8–12 million over 48 months. Bondalti's industrial integration, demonstration, and data roles could reasonably command a budget share of 12–18%, while our contributions across agronomic science, SSH, and regional demonstration might represent a similar proportion. We are flexible on budget allocation and committed to ensuring value for money and coherence in resource distribution.
+4.4 Timeline and Next Steps
+
+Given that the call deadline is expected in [insert expected deadline — likely Q1 or Q2 2027], we propose the following timeline:
+Milestone	Target Date
+Expression of interest exchange and bilateral call	[Month/Year]
+Consortium assembly complete (core partners confirmed)	[Month/Year]
+Kick-off consortium meeting (online or in-person)	[Month/Year]
+First full draft of proposal	[6 weeks before deadline]
+Internal review and iteration	[4 weeks before deadline]
+Final submission	[Deadline]
+4.5 Closing Statement
+
+We see Bondalti Water as an ideal industrial anchor for this call — a company that does not merely develop technology but understands the full translation chain from research insight to field-deployable, farmer-trusted, cost-effective innovation. Our strengths in agronomic science, social research, field demonstration infrastructure, and policy interface complement your profile in a way that creates a consortium with genuine end-to-end capability.
+
+We welcome the opportunity to discuss this further at your earliest convenience and are prepared to share detailed CVs, institutional profiles, and indicative budget breakdowns as the consortium takes shape.
+
+We look forward to building a competitive and impactful proposal together.

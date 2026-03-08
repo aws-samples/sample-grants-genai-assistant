@@ -1,0 +1,17 @@
+# Semgrep Scanner Ignore Configuration
+# Suppress false positives in third-party vendored libraries
+
+# Third-party libraries - Python 3.7+ compatibility warnings
+# We use Python 3.12 Lambda runtime, so importlib.resources is available
+**/certifi/core.py
+**/urllib3/contrib/emscripten/fetch.py
+
+# Third-party libraries - Intentional code patterns
+# These are intentional patterns in library code, not bugs
+**/urllib3/util/ssl_.py
+**/requests/help.py
+
+# pypdf library - XML parsing for PDF metadata
+# XML parsing is needed for PDF XMP metadata extraction
+# The library handles untrusted PDFs safely
+**/pypdf/xmp.py

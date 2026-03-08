@@ -1,0 +1,5 @@
+# PDF text extraction (vendored - not available in Lambda runtime)
+pypdf==5.1.0
+
+# Note: boto3/botocore use default Lambda Python 3.12 runtime versions
+# No need to vendor - bedrock-agent client works with runtime boto3

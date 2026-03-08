@@ -1,0 +1,25 @@
+{
+  "exported_at": "2026-01-20T14:27:31.556138Z",
+  "source_region": "us-east-2",
+  "prompts": [
+    "NSF-Prompt-Intellectual-Merit",
+    "NSF-Prompt-Broader-Impacts",
+    "NSF-Prompt-Implementation",
+    "NIH-Prompt-Significance-Innovation",
+    "NIH-Prompt-Approach",
+    "NIH-Prompt-Environment-Resources",
+    "DOD-Prompt-Technical-Approach",
+    "DOD-Prompt-Military-Relevance",
+    "DOD-Prompt-Execution-Plan",
+    "European-Commission-Prompt-Excellence",
+    "European-Commission-Prompt-Impact",
+    "European-Commission-Prompt-Implementation",
+    "DOE-Prompt-ScientificObjectives",
+    "DOE-Prompt-TechnicalApproach",
+    "DOE-Prompt-ImpactAndOutcomes",
+    "NASA-Prompt-ScientificTechnicalPlan",
+    "NASA-Prompt-NASARelevance",
+    "NASA-Prompt-WorkPlan"
+  ],
+  "missing": []
+}

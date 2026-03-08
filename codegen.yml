@@ -1,0 +1,23 @@
+overwrite: true
+schema: "schema/schema.graphql"
+documents: "frontend/src/**/*.{ts,tsx,graphql}"
+generates:
+  frontend/src/generated/graphql.ts:
+    plugins:
+      - "typescript"
+      - "typescript-operations"
+      - "typescript-react-apollo"
+    config:
+      withHooks: true
+      withComponent: false
+      withHOC: false
+      scalars:
+        AWSDateTime: string
+        AWSJSON: string
+      namingConvention:
+        typeNames: pascal-case#PascalCase
+        enumValues: upper-case#UPPER_CASE
+        transformUnderscore: true
+  schema.json:
+    plugins:
+      - "introspection"

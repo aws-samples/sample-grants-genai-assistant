@@ -1,0 +1,135 @@
+# Solving the NSF Biosensing Program Grant Proposal: A Comprehensive Approach
+
+## Page 1: Introduction and Problem Identification
+
+The National Science Foundation's Biosensing program (CBET 1639) represents a critical funding mechanism for advancing fundamental engineering research at the intersection of engineering, life sciences, and information technology. Successfully responding to this grant requires a carefully crafted proposal that not only aligns with the program's stated priorities but also demonstrates novelty, transformative potential, and broad societal impact. In this document, I outline a comprehensive strategy for developing a competitive proposal that addresses the program's areas of critical need—particularly the detection and monitoring of novel infectious agents, platform adaptability, and multiplex sensing technologies to prevent the spread of future pandemics.
+
+### Understanding the Program Landscape
+
+Before writing a single word of the proposal, it is essential to deeply understand what the Biosensing program seeks and, equally important, what it explicitly excludes. The program sits within the Engineering Biology and Health cluster alongside Biophotonics, Cellular and Biochemical Engineering, Disability and Rehabilitation Engineering, and Engineering of Biomedical Systems. Each of these sister programs has distinct boundaries, and a successful proposal must avoid encroaching on their territory. For instance, photonic imaging devices belong in Biophotonics, organ-on-chip systems in Engineering of Biomedical Systems, and basic chemical sensing mechanisms in the Chemical Measurement and Imaging program within the Division of Chemistry. Proposals that lean heavily on circuit design for signal processing, computational modeling alone, or microfluidics for sample separation will not be well-received. Understanding these boundaries is the first step toward crafting a proposal that will not be returned without review or redirected to another program.
+
+The program's emphasis areas provide a clear roadmap: novel signal transduction principles, biorecognition element design, adaptive and evolvable biosensing systems, synthetic biology approaches for cell-free and cell-based sensors, and the integration of biosensors with artificial intelligence. Any successful proposal should engage with at least one—and ideally multiple—of these priority areas while demonstrating clear engineering and life science contributions.
+
+### Identifying the Core Problem
+
+The COVID-19 pandemic exposed catastrophic gaps in the world's ability to rapidly detect, monitor, and contain novel infectious agents. Existing diagnostic infrastructure proved too slow, too centralized, and too rigid to adapt to a rapidly evolving pathogen. Reverse-transcription polymerase chain reaction (RT-PCR) testing, while accurate, required centralized laboratories, trained personnel, and hours-to-days turnaround times. Rapid antigen tests, while faster, suffered from lower sensitivity and were developed only after months of characterization of the SARS-CoV-2 virus. The fundamental problem is that current biosensing paradigms are designed around known targets—they are inherently reactive rather than proactive, and they lack the adaptability needed to respond to unknown or rapidly mutating biological threats.
+
+This proposal would address this gap by developing an **Adaptive Multiplex Biosensing Platform (AMBP)** that integrates programmable biorecognition elements, novel signal transduction mechanisms, and artificial intelligence-driven data analysis to enable rapid detection and characterization of emerging biological threats in both clinical and environmental settings.
+
+---
+
+## Page 2: Proposed Technical Approach
+
+### Research Objective and Hypothesis
+
+The central hypothesis of this proposal is that a biosensing platform combining CRISPR-based programmable biorecognition elements with electrochemical and optical dual-mode signal transduction, augmented by machine learning algorithms for signal interpretation, can achieve rapid (<30 minutes), sensitive (attomolar), and specific detection of novel biological analytes—including previously uncharacterized pathogens—with minimal redesign time when new targets emerge.
+
+This hypothesis addresses multiple priority areas identified by the Biosensing program: novel signal transduction principles, design of novel biorecognition elements with adaptable operating parameters, development of adaptive biosensing systems for novel target analytes, synthetic biology approaches for cell-free biosensors, and the combination of biosensors with AI methods.
+
+### Aim 1: Programmable Biorecognition Using CRISPR-Cas Systems
+
+The first aim focuses on engineering a library of CRISPR-Cas13 and Cas12a guide RNAs that can be rapidly synthesized and deployed to target specific nucleic acid sequences from novel pathogens. Unlike antibody-based recognition elements, which require months of development for each new target, CRISPR guide RNAs can be designed computationally and synthesized within days of a pathogen's genome being sequenced. The innovation here lies not in CRISPR diagnostics per se—which have been demonstrated—but in the development of a **universal cell-free reaction module** that can accept interchangeable guide RNA cassettes without requiring reformulation of the underlying biochemistry.
+
+We will engineer optimized cell-free transcription-translation (TX-TL) systems derived from bacterial lysates that incorporate Cas effector proteins, reporter substrates, and stabilizing agents in a lyophilized format. This lyophilized master mix would be shelf-stable and deployable in resource-limited settings, requiring only the addition of the target-specific guide RNA and the sample. The synthetic biology approach here extends beyond simple CRISPR activation: we will engineer allosteric riboswitches and toehold switches as secondary amplification layers that respond to Cas-mediated cleavage products, creating a cascade amplification effect that enhances sensitivity without requiring thermal cycling or enzymatic amplification (such as PCR).
+
+This aim advances both engineering (through the rational design of modular cell-free systems and cascade signal amplification architectures) and life sciences (through fundamental understanding of CRISPR collateral cleavage kinetics, riboswitch thermodynamics, and cell-free gene expression dynamics).
+
+### Aim 2: Dual-Mode Electrochemical-Optical Signal Transduction
+
+The second aim addresses the need for novel signal transduction principles that enhance both sensitivity and specificity. We propose a dual-mode transduction system in which the same molecular recognition event generates both an electrochemical signal (via redox-active reporter molecules released upon Cas-mediated cleavage) and an optical signal (via fluorescence dequenching of FRET-paired reporters). The dual-mode approach provides inherent redundancy and cross-validation, reducing false positives and false negatives—a critical requirement for public health and homeland security applications.
+
+The electrochemical component will utilize gold nanostructured electrode arrays fabricated using template-assisted electrodeposition, providing high surface area and tunable plasmonic properties. Methylene blue-tagged single-stranded DNA reporters, anchored to the electrode surface via thiol chemistry, will serve as the electrochemical signal generators. Upon Cas-mediated collateral cleavage, the methylene blue moieties are released from the surface, producing a measurable decrease in square wave voltammetry (SWV) current. Simultaneously, fluorophore-quencher paired RNA reporters in solution undergo cleavage, producing a fluorescent signal measurable by an integrated photodetector.
+
+The novelty in this aim lies in the **co-optimization of electrode surface chemistry and solution-phase reporter design** to enable simultaneous, non-interfering dual-mode readout from a single recognition event. We will develop a theoretical framework for understanding the kinetic competition between surface-bound and solution-phase reporter cleavage by Cas effector proteins, which represents a fundamental contribution to biosensor transduction science.
+
+### Aim 3: AI-Augmented Signal Analysis and Adaptive Calibration
+
+The third aim integrates artificial intelligence with the biosensing platform to improve specificity, reduce response time, and enable adaptive operation. We will develop a convolutional neural network (CNN) trained on time-series electrochemical and optical data to distinguish true positive signals from interferent-induced artifacts. Importantly, the AI component is not a standalone computational modeling effort (which the program discourages) but is intrinsically embedded in the sensor's operation—it is the mechanism by which the sensor achieves its performance characteristics.
+
+A key innovation is the development of **transfer learning protocols** that allow the AI model, initially trained on a set of known pathogen targets, to be rapidly fine-tuned for new targets with minimal training data. When a new guide RNA cassette is deployed for a novel pathogen, the model leverages its existing knowledge of Cas cleavage kinetics and transduction physics to interpret signals from the new target, requiring only a small calibration dataset. This constitutes an adaptive, evolvable biosensing system—directly aligned with the program's priorities.
+
+---
+
+## Page 3: Experimental Plan, Broader Impacts, and Budget Strategy
+
+### Experimental Validation Plan
+
+The experimental validation will proceed in three phases corresponding to the three aims, with integration milestones ensuring that components developed independently function as a cohesive system.
+
+**Phase 1 (Months 1-12):** Development and characterization of the modular cell-free CRISPR biosensing chemistry. We will benchmark against three model targets: synthetic RNA sequences from SARS-CoV-2 (known pathogen, established reference), influenza H5N1 (potential pandemic threat), and a synthetic "unknown" target designed to simulate a novel pathogen scenario. Performance metrics include limit of detection (target: 1 attomolar), dynamic range (target: 6 orders of magnitude), and guide RNA deployment time (target: <72 hours from sequence to functional assay). Shelf stability of lyophilized reagents will be assessed at 25°C and 37°C over 6-month intervals.
+
+**Phase 2 (Months 6-24):** Fabrication and characterization of dual-mode transduction electrodes. Electrode arrays will be fabricated in collaboration with the university's nanofabrication facility. Electrochemical and optical signal-to-noise ratios will be optimized iteratively. Cross-reactivity studies using complex biological matrices (saliva, wastewater, soil extracts) will assess real-world performance. This phase overlaps with Phase 1 to accelerate integration.
+
+**Phase 3 (Months 12-36):** AI model development, training, and system integration. The CNN will be trained on data generated during Phases 1 and 2. Transfer learning efficacy will be evaluated by withholding one target during initial training and then assessing the model's ability to interpret signals from the withheld target with minimal calibration data (5, 10, 25, and 50 calibration samples). Full system demonstrations will be conducted using blinded samples in clinically relevant and environmentally relevant matrices.
+
+Critically, the proposal will emphasize that the research is **fundamental in nature**—we are not optimizing an existing device for a specific application, but rather developing new principles of signal transduction, biorecognition modularity, and AI-sensor integration that advance the field broadly.
+
+### Broader Impacts
+
+The broader impacts of this work span multiple dimensions emphasized by the program solicitation:
+
+**Public Health and Pandemic Preparedness:** The AMBP platform directly addresses the program's call for technologies enabling monitoring and surveillance for novel infectious agents and rapid deployment of sensors. A successful outcome would provide a blueprint for next-generation diagnostic platforms that can be reconfigured within days of identifying a new pathogen.
+
+**Environmental Protection and Food Safety:** The platform's adaptability extends to environmental monitoring (e.g., detection of antimicrobial resistance genes in wastewater, agricultural pathogen monitoring) and food safety (e.g., rapid detection of foodborne pathogens). We will demonstrate proof-of-concept in at least one environmental matrix.
+
+**Education and Workforce Development:** The project will support one PhD graduate student and provide research experiences for two undergraduate students per year, recruited through the university's existing REU and McNair Scholars programs to ensure participation of underrepresented groups. The interdisciplinary nature of the work—spanning bioengineering, synthetic biology, materials science, and data science—provides exceptional training at the convergence of engineering and life sciences.
+
+**Dissemination and Community Engagement:** We will develop a hands-on biosensing workshop module for local high school students, focusing on the science of pathogen detection, to be delivered annually through the university's STEM outreach program. Research results will be disseminated through peer-reviewed publications, conference presentations, and a publicly accessible data repository.
+
+### Budget Strategy
+
+Following the program's guidance, the budget is structured for a three-year, single-PI project with support for one graduate student and up to one month of PI salary per year. The budget will include:
+
+- **Personnel:** PI salary (1 month/year), one graduate research assistant (full support including tuition, stipend, and benefits), and undergraduate research assistants (hourly, academic year and summer).
+- **Materials and Supplies:** CRISPR reagents, cell-free expression kits, electrode fabrication materials, fluorescent reporters, and general laboratory consumables (~$25,000/year).
+- **Equipment:** A modest request for a potentiostat with multiplexed channel capability (~$30,000, Year 1 only), justified by the need for simultaneous multi-channel electrochemical measurements not available with existing equipment.
+- **Travel:** Domestic conference attendance (2 conferences/year) for the PI and graduate student.
+- **Publication Costs:** Open-access publication fees for anticipated 2-3 publications per year.
+
+The total budget is estimated at approximately $400,000-$450,000 over three years, consistent with typical single-investigator CBET awards. Should the program director indicate that this exceeds typical levels, the budget can be adjusted by phasing equipment purchases or reducing undergraduate support.
+
+---
+
+## Page 4: Ensuring Competitiveness and Compliance
+
+### Addressing Novelty and Transformative Potential
+
+The program solicitation explicitly states that proposals should address the novelty and potentially transformative nature of the work compared to previous efforts. This must appear, at minimum, in the Project Summary. Our proposal's transformative claim rests on three pillars:
+
+1. **Modularity at the biorecognition level** that decouples target identification from platform engineering, enabling days-to-deployment rather than months-to-deployment timelines for new threats.
+2. **Dual-mode transduction from a single recognition event**, which is a fundamentally new approach to improving diagnostic reliability without increasing assay complexity or time.
+3. **Transfer learning for biosensor calibration**, which represents a paradigm shift from target-specific calibration models to generalizable, adaptable AI frameworks that learn the physics of transduction rather than memorizing target-specific signal patterns.
+
+These innovations are not incremental improvements to existing technologies; they represent new principles that can be applied broadly across biosensing applications.
+
+### Distinguishing from Excluded Topics
+
+To avoid the pitfall of being redirected or returned without review, the proposal will clearly articulate what it does and does not cover:
+
+- The AI component focuses on **sensor-integrated signal interpretation**, not standalone computational modeling or communications/circuit design (which would belong in CCSS 7564).
+- The microfluidic sample handling is deliberately excluded; samples are assumed to be pre-processed, and any sample introduction is achieved through simple pipetting or capillary action, not engineered microfluidic networks.
+- The electrochemical electrode design focuses on **novel transduction principles**, not circuit-level signal amplification.
+- The work does not involve medical imaging, optogenetics, organ-on-chip systems, or tissue engineering.
+
+### Pre-Submission Strategy
+
+The solicitation recommends contacting the program director for innovative ideas outside the listed areas and requires discussion for RAPID, EAGER, and GOALI proposals. Even for a standard unsolicited proposal that fits squarely within the program's interests, I would recommend contacting the program director prior to submission to:
+
+1. Confirm that the proposed work falls within the Biosensing program's scope and not an adjacent program.
+2. Verify that the budget level is appropriate.
+3. Seek guidance on whether the AI component is sufficiently sensor-integrated to remain within Biosensing rather than being redirected to CCSS.
+4. Inquire about potential co-funding opportunities with the Environmental Engineering program (CBET 1440) given the wastewater monitoring application.
+
+### Writing Strategy and Compliance
+
+The proposal will be written in strict compliance with the NSF Proposal & Award Policies & Procedures Guide (PAPPG), including all required sections (Project Summary, Project Description, References Cited, Biographical Sketches, Budget and Budget Justification, Current and Pending Support, Facilities and Equipment, and Data Management Plan). The Project Summary will include an overview, intellectual merit statement, and broader impacts statement, each clearly delineated, with the transformative nature of the research explicitly stated.
+
+The Project Description (limited to 15 pages) will be organized as: (1) Introduction and Motivation, (2) Background and Literature Review demonstrating awareness of prior art and the gap being filled, (3) Research Plan organized by Aims, (4) Expected Outcomes and Milestones, (5) Broader Impacts, and (6) Results from Prior NSF Support (if applicable).
+
+### Consideration of CAREER Submission
+
+Given that the program strongly encourages CAREER proposals, if the PI is an early-career, tenure-track faculty member, this research concept could be adapted into a five-year CAREER proposal with an expanded educational plan. The CAREER version would deepen the educational broader impacts—potentially creating a new graduate course on "AI-Integrated Biosensing" and developing a sustained K-12 outreach program—while extending the research timeline to include more ambitious goals such as field deployment and longitudinal environmental monitoring studies. The CAREER submission deadline in July provides a clear planning horizon.
+
+### Conclusion
+
+Solving this grant proposal requires a disciplined integration of cutting-edge science with strategic alignment to the program's stated priorities, explicit boundaries, and operational guidance. The Adaptive Multiplex Biosensing Platform concept addresses the program's most critical needs—pandemic preparedness, platform adaptability, and AI integration—while maintaining a clear focus on fundamental engineering research that advances both engineering and life sciences. By combining programmable CRISPR biorecognition, dual-mode signal transduction, and transfer learning-based AI analysis, the proposal offers a genuinely transformative vision for the future of biosensing. Careful attention to compliance, budget norms, and pre-submission communication with the program director maximizes the probability of a favorable review outcome.

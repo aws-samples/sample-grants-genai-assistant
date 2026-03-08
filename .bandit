@@ -1,0 +1,29 @@
+# Bandit Security Scanner Configuration
+# Suppress false positives in third-party vendored libraries
+
+[bandit]
+# Exclude third-party library directories from scanning
+exclude_dirs = [
+    '/requests/',
+    '/urllib3/',
+    '/certifi/',
+    '/pypdf/',
+    '/idna/',
+    '/charset_normalizer/',
+    '/botocore/',
+    '/boto3/'
+]
+
+# Skip specific checks that are false positives in our context
+skips = []
+
+# B324: Use of weak MD5/SHA1 hash
+# - requests/auth.py: Required by HTTP Digest Authentication (RFC 2617)
+# - pypdf/_encryption.py: Required by PDF encryption specification
+# These are not used for security purposes, but for protocol compliance
+
+# B304: Use of insecure cipher ARC4
+# - pypdf/_crypt_providers/: Required by PDF encryption specification (legacy PDF support)
+
+# B413: Deprecated pyCrypto library
+# - pypdf/_crypt_providers/_pycryptodome.py: Used by pypdf for PDF encryption (not our code)

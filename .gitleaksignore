@@ -1,0 +1,6 @@
+# GitLeaks Ignore Configuration
+# Suppress false positives
+
+# client.js - API key is loaded from amplify_outputs.json, not hardcoded
+# The pattern match is on the import statement, not an actual hardcoded key
+react-aws/src/graphql/client.js:generic-api-key:12

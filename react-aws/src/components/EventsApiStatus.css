@@ -1,0 +1,65 @@
+.events-api-status {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin: 8px 0;
+  border: 1px solid transparent;
+}
+
+.events-api-status.connecting {
+  background: #fff3cd;
+  border-color: #ffeaa7;
+  color: #856404;
+}
+
+.events-api-status.connected {
+  background: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+.events-api-status.failed {
+  background: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+.events-api-status.disconnected {
+  background: #e2e3e5;
+  border-color: #d6d8db;
+  color: #383d41;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.error-details {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.error-details small {
+  opacity: 0.8;
+  flex: 1;
+}
+
+.reconnect-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.reconnect-btn:hover {
+  background: #c82333;
+}

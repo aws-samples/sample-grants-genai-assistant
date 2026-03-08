@@ -1,0 +1,3 @@
+# AWS SDK for Python
+boto3==1.40.55
+botocore==1.40.55

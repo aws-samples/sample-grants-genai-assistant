@@ -1,0 +1,88 @@
+{
+  "documents": [
+    {
+      "title": "Agent Discovery Guide",
+      "filename": "agent-discovery-guide.md",
+      "description": "Guide to setting up and using autonomous grant discovery with scheduled searches across US and EU databases",
+      "keywords": [
+        "agent",
+        "discovery",
+        "autonomous",
+        "automatic",
+        "schedule",
+        "configuration",
+        "US grants",
+        "EU grants",
+        "multi-region",
+        "match score",
+        "Bayesian"
+      ],
+      "last_updated": "2026-03-04T12:00:00Z"
+    },
+    {
+      "title": "Knowledge Base Guide",
+      "filename": "knowledge-base-guide.md",
+      "description": "Guide to uploading, managing, and searching your research documents in the knowledge base",
+      "keywords": [
+        "knowledge base",
+        "documents",
+        "upload",
+        "library",
+        "content",
+        "files",
+        "PDF",
+        "search",
+        "manage",
+        "delete",
+        "agency",
+        "tagging"
+      ],
+      "last_updated": "2026-03-04T12:00:00Z"
+    },
+    {
+      "title": "Proposal Generation Guide",
+      "filename": "proposal-generation-guide.md",
+      "description": "Complete guide to generating AI-powered grant proposals, including document selection, agency prompts, status tracking, and downloading results",
+      "keywords": [
+        "proposal",
+        "generate",
+        "generation",
+        "create",
+        "workflow",
+        "grants",
+        "AI",
+        "document selection",
+        "automatic",
+        "manual",
+        "download",
+        "PDF",
+        "HTML",
+        "NIH",
+        "NSF",
+        "DOD",
+        "prompts",
+        "agencies"
+      ],
+      "last_updated": "2026-03-04T12:00:00Z"
+    },
+    {
+      "title": "Evaluation Metrics Guide",
+      "filename": "evaluation-metrics-guide.md",
+      "description": "Detailed explanation of the 4 proposal evaluation metrics: Content Quality, Guideline Adherence, Completeness, and Source Utilization",
+      "keywords": [
+        "evaluation",
+        "metrics",
+        "quality",
+        "score",
+        "rating",
+        "assessment",
+        "content quality",
+        "guideline adherence",
+        "completeness",
+        "source utilization",
+        "grade"
+      ],
+      "last_updated": "2026-03-04T12:00:00Z"
+    }
+  ]
+}

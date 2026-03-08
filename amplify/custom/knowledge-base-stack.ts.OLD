@@ -1,0 +1,525 @@
+/**
+ * General-Purpose Knowledge Base Infrastructure Stack
+ * 
+ * Provides OpenSearch Serverless collection with Bedrock Knowledge Base integration
+ * for document vectorization and semantic search capabilities.
+ * 
+ * Features:
+ * - OpenSearch Serverless collection with vector search
+ * - Bedrock-compatible vector index schema (1536 dimensions, HNSW algorithm)
+ * - IAM roles for Bedrock Knowledge Base access
+ * - Encryption, network, and data access policies
+ * - Account-portable configuration
+ */
+
+import { 
+  aws_opensearchserverless as opensearch,
+  aws_iam as iam,
+  aws_s3 as s3,
+  aws_s3_notifications as s3n,
+  aws_lambda as lambda,
+  aws_bedrock as bedrock,
+  Duration,
+  RemovalPolicy,
+  CfnOutput,
+  Stack,
+  Names,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+
+export interface KnowledgeBaseStackProps {
+  /**
+   * Name of the OpenSearch collection
+   * @default 'knowledge-base-collection'
+   */
+  collectionName?: string;
+  
+  /**
+   * Additional IAM principals that need access to the collection
+   * @default []
+   */
+  additionalPrincipals?: string[];
+}
+
+export class KnowledgeBaseStack extends Construct {
+  public readonly collection: opensearch.CfnCollection;
+  public readonly bedrockRole: iam.Role;
+  public readonly documentBucket: s3.Bucket;
+  public readonly knowledgeBase?: bedrock.CfnKnowledgeBase;
+  public readonly dataSource?: bedrock.CfnDataSource;
+  public readonly collectionEndpoint: string;
+  public readonly collectionArn: string;
+  
+  constructor(scope: Construct, id: string, props?: KnowledgeBaseStackProps) {
+    super(scope, id);
+    
+    const stack = Stack.of(this);
+    const account = stack.account;
+    const region = stack.region;
+    const collectionName = props?.collectionName || 'knowledge-base-collection';
+    
+    // 1. Create S3 bucket for document storage
+    this.documentBucket = new s3.Bucket(this, 'DocumentBucket', {
+      bucketName: `kb-documents-${account}-${region}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      versioned: true,
+      enforceSSL: true,
+      removalPolicy: RemovalPolicy.RETAIN, // Protect user data
+      lifecycleRules: [
+        {
+          // Move old versions to Intelligent-Tiering after 30 days
+          noncurrentVersionTransitions: [
+            {
+              storageClass: s3.StorageClass.INTELLIGENT_TIERING,
+              transitionAfter: Duration.days(30)
+            }
+          ],
+          // Delete old versions after 90 days
+          noncurrentVersionExpiration: Duration.days(90)
+        },
+        {
+          // Move current objects to Intelligent-Tiering after 90 days
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INTELLIGENT_TIERING,
+              transitionAfter: Duration.days(90)
+            }
+          ]
+        }
+      ],
+      cors: [
+        {
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+            s3.HttpMethods.HEAD
+          ],
+          allowedOrigins: ['*'], // Will be restricted by presigned URLs
+          allowedHeaders: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3000
+        }
+      ]
+    });
+    
+    // Note: User-scoped access control should be enforced at the application layer
+    // S3 bucket policies with prefix conditions only work with ListBucket actions
+    
+    // Generate unique suffix using CDK's Names utility (max 8 chars to stay under 32 char limit)
+    const uniqueId = Names.uniqueId(this).slice(-8).toLowerCase();
+    
+    // 2. Create Bedrock execution role for Knowledge Base
+    this.bedrockRole = new iam.Role(this, 'BedrockKnowledgeBaseRole', {
+      // Let CDK generate the role name automatically to avoid validation issues
+      assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
+      description: 'Execution role for Bedrock Knowledge Base to access OpenSearch and S3',
+    });
+    
+    // Grant Bedrock role access to S3 bucket for document ingestion
+    this.documentBucket.grantRead(this.bedrockRole);
+    
+    // Grant Bedrock role permissions for embeddings
+    this.bedrockRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'bedrock:InvokeModel'
+        ],
+        resources: [
+          `arn:aws:bedrock:${region}::foundation-model/amazon.titan-embed-text-v1`,
+          `arn:aws:bedrock:${region}::foundation-model/amazon.titan-embed-text-v2:0`
+        ]
+      })
+    );
+    
+    // 2. Encryption policy - required for OpenSearch Serverless
+    const encryptionPolicy = new opensearch.CfnSecurityPolicy(this, 'EncryptionPolicy', {
+      name: `kb-encrypt-${uniqueId}`,
+      type: 'encryption',
+      policy: JSON.stringify({
+        Rules: [{
+          ResourceType: 'collection',
+          Resource: [`collection/${collectionName}`]
+        }],
+        AWSOwnedKey: true
+      })
+    });
+    
+    // 3. Network policy - allow public access (protected by IAM)
+    const networkPolicy = new opensearch.CfnSecurityPolicy(this, 'NetworkPolicy', {
+      name: `kb-network-${uniqueId}`,
+      type: 'network',
+      policy: JSON.stringify([{
+        Rules: [{
+          ResourceType: 'collection',
+          Resource: [`collection/${collectionName}`]
+        }],
+        AllowFromPublic: true
+      }])
+    });
+    
+    // 4. Data access policy - grant permissions to Bedrock role and additional principals
+    // IMPORTANT: OpenSearch Serverless requires BOTH the role ARN and the assumed-role ARN pattern
+    // because Bedrock uses temporary credentials when it assumes the role to create the index
+    const bedrockRoleName = this.bedrockRole.roleName;
+    
+    const principals = [
+      `arn:aws:iam::${account}:root`,
+      // Bedrock role - both role and assumed-role patterns
+      this.bedrockRole.roleArn,
+      `arn:aws:sts::${account}:assumed-role/${bedrockRoleName}/*`,
+      // Lambda execution roles (for index creator)
+      `arn:aws:sts::${account}:assumed-role/amplify-*`,
+      // SSO role for manual index creation and management
+      `arn:aws:sts::${account}:assumed-role/AWSReservedSSO_AWSAdministratorAccess_b6d6316a46884f63/*`,
+      ...(props?.additionalPrincipals || [])
+    ];
+    
+    const dataAccessPolicy = new opensearch.CfnAccessPolicy(this, 'DataAccessPolicy', {
+      name: `kb-data-${uniqueId}`,
+      type: 'data',
+      policy: JSON.stringify([{
+        Rules: [
+          {
+            Resource: [`collection/${collectionName}`],
+            Permission: [
+              'aoss:DescribeCollectionItems',
+              'aoss:CreateCollectionItems',
+              'aoss:UpdateCollectionItems'
+            ],
+            ResourceType: 'collection'
+          },
+          {
+            Resource: [`index/${collectionName}/*`],
+            Permission: [
+              'aoss:CreateIndex',
+              'aoss:DeleteIndex',
+              'aoss:UpdateIndex',
+              'aoss:DescribeIndex',
+              'aoss:ReadDocument',
+              'aoss:WriteDocument'
+            ],
+            ResourceType: 'index'
+          }
+        ],
+        Principal: principals
+      }])
+    });
+    
+    // 6. Create OpenSearch Serverless collection for vector search
+    this.collection = new opensearch.CfnCollection(this, 'Collection', {
+      name: collectionName,
+      type: 'VECTORSEARCH',
+      description: 'General-purpose knowledge base with vector search capabilities'
+    });
+    
+    // Ensure proper dependency order
+    this.collection.addDependency(encryptionPolicy);
+    this.collection.addDependency(networkPolicy);
+    this.collection.addDependency(dataAccessPolicy);
+    
+    // 7. Grant OpenSearch permissions to Bedrock role
+    this.bedrockRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'aoss:APIAccessAll',
+          'aoss:DescribeCollectionItems',
+          'aoss:CreateCollectionItems',
+          'aoss:UpdateCollectionItems'
+        ],
+        resources: [this.collection.attrArn]
+      })
+    );
+    
+    // Store collection details for easy access
+    this.collectionEndpoint = this.collection.attrCollectionEndpoint;
+    this.collectionArn = this.collection.attrArn;
+    
+    // 8. Create Bedrock Knowledge Base
+    // NOTE: The vector index must be created BEFORE this resource
+    // Index 'bedrock-knowledge-base-default-index' has been created successfully
+    
+    this.knowledgeBase = new bedrock.CfnKnowledgeBase(this, 'KnowledgeBase', {
+      name: `${collectionName}-kb`,
+      description: 'General-purpose knowledge base for document vectorization and semantic search',
+      roleArn: this.bedrockRole.roleArn,
+      knowledgeBaseConfiguration: {
+        type: 'VECTOR',
+        vectorKnowledgeBaseConfiguration: {
+          embeddingModelArn: `arn:aws:bedrock:${region}::foundation-model/amazon.titan-embed-text-v2:0`
+        }
+      },
+      storageConfiguration: {
+        type: 'OPENSEARCH_SERVERLESS',
+        opensearchServerlessConfiguration: {
+          collectionArn: this.collectionArn,
+          vectorIndexName: 'bedrock-knowledge-base-default-index',
+          fieldMapping: {
+            vectorField: 'bedrock-knowledge-base-default-vector',
+            textField: 'AMAZON_BEDROCK_TEXT_CHUNK',
+            metadataField: 'AMAZON_BEDROCK_METADATA'
+          }
+        }
+      }
+    });
+    
+    // Ensure Knowledge Base is created after collection, policies, and role
+    this.knowledgeBase.node.addDependency(this.collection);
+    this.knowledgeBase.node.addDependency(dataAccessPolicy);
+    this.knowledgeBase.node.addDependency(this.bedrockRole);
+    
+    // 9. Create S3 Data Source for automatic document ingestion
+    this.dataSource = new bedrock.CfnDataSource(this, 'S3DataSource', {
+      name: `${collectionName}-s3-datasource`,
+      description: 'S3 data source for automatic document ingestion',
+      knowledgeBaseId: this.knowledgeBase.attrKnowledgeBaseId,
+      dataSourceConfiguration: {
+        type: 'S3',
+        s3Configuration: {
+          bucketArn: this.documentBucket.bucketArn,
+          inclusionPrefixes: ['user-']
+        }
+      },
+      vectorIngestionConfiguration: {
+        chunkingConfiguration: {
+          chunkingStrategy: 'FIXED_SIZE',
+          fixedSizeChunkingConfiguration: {
+            maxTokens: 512,
+            overlapPercentage: 20
+          }
+        }
+      }
+    });
+    
+    // Ensure data source is created after Knowledge Base
+    this.dataSource.addDependency(this.knowledgeBase);
+    
+    // Grant Bedrock role permissions to list bucket for data source sync
+    // Note: Removed s3:prefix condition as it can cause deployment issues
+    // The inclusionPrefixes in the data source configuration handles filtering
+    this.bedrockRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          's3:ListBucket'
+        ],
+        resources: [this.documentBucket.bucketArn]
+      })
+    );
+    
+    // 9. CloudFormation outputs for cross-stack references
+    new CfnOutput(this, 'CollectionEndpoint', {
+      value: this.collectionEndpoint,
+      description: 'OpenSearch Serverless collection endpoint',
+      exportName: `${collectionName}-Endpoint-${account}`
+    });
+    
+    new CfnOutput(this, 'CollectionArn', {
+      value: this.collectionArn,
+      description: 'OpenSearch Serverless collection ARN',
+      exportName: `${collectionName}-Arn-${account}`
+    });
+    
+    new CfnOutput(this, 'BedrockRoleArn', {
+      value: this.bedrockRole.roleArn,
+      description: 'Bedrock Knowledge Base execution role ARN',
+      exportName: `${collectionName}-BedrockRole-${account}`
+    });
+    
+    new CfnOutput(this, 'CollectionName', {
+      value: collectionName,
+      description: 'OpenSearch collection name',
+      exportName: `${collectionName}-Name-${account}`
+    });
+    
+    new CfnOutput(this, 'DocumentBucketName', {
+      value: this.documentBucket.bucketName,
+      description: 'S3 bucket for document storage',
+      exportName: `${collectionName}-DocumentBucket-${account}`
+    });
+    
+    new CfnOutput(this, 'DocumentBucketArn', {
+      value: this.documentBucket.bucketArn,
+      description: 'S3 bucket ARN',
+      exportName: `${collectionName}-DocumentBucketArn-${account}`
+    });
+    
+    // Knowledge Base outputs
+    new CfnOutput(this, 'KnowledgeBaseId', {
+      value: this.knowledgeBase!.attrKnowledgeBaseId,
+      description: 'Bedrock Knowledge Base ID',
+      exportName: `${collectionName}-KnowledgeBaseId-${account}`
+    });
+    
+    new CfnOutput(this, 'KnowledgeBaseArn', {
+      value: this.knowledgeBase!.attrKnowledgeBaseArn,
+      description: 'Bedrock Knowledge Base ARN',
+      exportName: `${collectionName}-KnowledgeBaseArn-${account}`
+    });
+    
+    new CfnOutput(this, 'DataSourceId', {
+      value: this.dataSource!.attrDataSourceId,
+      description: 'Bedrock Data Source ID',
+      exportName: `${collectionName}-DataSourceId-${account}`
+    });
+  }
+  
+  /**
+   * Grant read/write permissions to OpenSearch collection
+   */
+  public grantReadWrite(grantee: iam.IGrantable): void {
+    grantee.grantPrincipal.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'aoss:APIAccessAll',
+          'aoss:DescribeCollectionItems',
+          'aoss:CreateCollectionItems',
+          'aoss:UpdateCollectionItems',
+          'aoss:DeleteCollectionItems'
+        ],
+        resources: [this.collectionArn]
+      })
+    );
+  }
+  
+  /**
+   * Grant read-only permissions to OpenSearch collection
+   */
+  public grantRead(grantee: iam.IGrantable): void {
+    grantee.grantPrincipal.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'aoss:APIAccessAll',
+          'aoss:DescribeCollectionItems'
+        ],
+        resources: [this.collectionArn]
+      })
+    );
+  }
+  
+  /**
+   * Grant Lambda function access to document bucket for uploads
+   */
+  public grantDocumentUpload(grantee: iam.IGrantable): void {
+    this.documentBucket.grantPut(grantee);
+    this.documentBucket.grantRead(grantee);
+  }
+  
+  /**
+   * Grant Lambda function access to document bucket for management
+   */
+  public grantDocumentManagement(grantee: iam.IGrantable): void {
+    this.documentBucket.grantReadWrite(grantee);
+    this.documentBucket.grantDelete(grantee);
+  }
+  
+  /**
+   * Grant Lambda function permissions to trigger Knowledge Base sync
+   */
+  public grantKnowledgeBaseSync(grantee: iam.IGrantable): void {
+    if (!this.knowledgeBase) {
+      throw new Error('Knowledge Base not yet deployed. Run Phase 2 deployment first.');
+    }
+    grantee.grantPrincipal.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'bedrock:StartIngestionJob',
+          'bedrock:GetIngestionJob',
+          'bedrock:ListIngestionJobs'
+        ],
+        resources: [
+          this.knowledgeBase.attrKnowledgeBaseArn,
+          `${this.knowledgeBase.attrKnowledgeBaseArn}/*`
+        ]
+      })
+    );
+  }
+  
+  /**
+   * Grant Lambda function permissions to query Knowledge Base
+   */
+  public grantKnowledgeBaseQuery(grantee: iam.IGrantable): void {
+    if (!this.knowledgeBase) {
+      throw new Error('Knowledge Base not yet deployed. Run Phase 2 deployment first.');
+    }
+    grantee.grantPrincipal.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'bedrock:Retrieve',
+          'bedrock:RetrieveAndGenerate'
+        ],
+        resources: [this.knowledgeBase.attrKnowledgeBaseArn]
+      })
+    );
+    
+    // Also grant access to the embedding model for query vectorization
+    grantee.grantPrincipal.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['bedrock:InvokeModel'],
+        resources: [
+          `arn:aws:bedrock:${Stack.of(this).region}::foundation-model/amazon.titan-embed-text-v2:0`
+        ]
+      })
+    );
+  }
+  
+  /**
+   * Add S3 event notification for document processing
+   * Call this method after creating the document processor Lambda function
+   */
+  public addDocumentProcessingTrigger(processorFunction: lambda.IFunction): void {
+    this.documentBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.LambdaDestination(processorFunction),
+      {
+        prefix: 'user-',
+        suffix: '.pdf'
+      }
+    );
+    
+    this.documentBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.LambdaDestination(processorFunction),
+      {
+        prefix: 'user-',
+        suffix: '.docx'
+      }
+    );
+    
+    this.documentBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.LambdaDestination(processorFunction),
+      {
+        prefix: 'user-',
+        suffix: '.doc'
+      }
+    );
+    
+    this.documentBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.LambdaDestination(processorFunction),
+      {
+        prefix: 'user-',
+        suffix: '.txt'
+      }
+    );
+    
+    this.documentBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.LambdaDestination(processorFunction),
+      {
+        prefix: 'user-',
+        suffix: '.md'
+      }
+    );
+  }
+}

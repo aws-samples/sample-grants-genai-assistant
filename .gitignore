@@ -1,0 +1,101 @@
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+#
+react/node_modules
+backend/node_modules
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+deployment-*.log
+
+# AWS
+.aws/
+*.pem
+# Exception: certifi CA bundle must be included in Lambda deployment packages
+!**/certifi/cacert.pem
+*.key
+.envrc  # direnv file with AWS credentials
+
+# CDK
+cdk.out/
+react-aws/cdk-python/cdk.out/
+react-aws/cdk-python/cdk-out-*/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Build artifacts
+*.zip
+grants-app-build.zip
+
+# amplify
+node_modules
+.amplify
+amplify_outputs*
+amplifyconfiguration*
+
+# Ignore botocore example files that contain fake credentials
+lambda-functions/*/botocore/
+**/botocore/data/*/examples-*.json
+
+# EU grants database (100MB JSON file)
+python/eu_grants_full.json
+#
+.threat-composer
+
+# Bundled Lambda Python dependencies (installed at build time)
+amplify/functions/agent-discovery-search/certifi/
+amplify/functions/agent-discovery-search/certifi-*/
+amplify/functions/agent-discovery-search/charset_normalizer/
+amplify/functions/agent-discovery-search/charset_normalizer-*/
+amplify/functions/agent-discovery-search/idna/
+amplify/functions/agent-discovery-search/idna-*/
+amplify/functions/agent-discovery-search/requests/
+amplify/functions/agent-discovery-search/requests-*/
+amplify/functions/agent-discovery-search/urllib3/
+amplify/functions/agent-discovery-search/urllib3-*/
+amplify/functions/agent-discovery-search/bin/
+amplify/functions/agent-discovery-search/__pycache__/
