@@ -66,8 +66,8 @@ If you have a zip file instead:
 sudo -s
 mkdir /home/install && cd /home/install
 # Upload via CloudShell Actions → Upload file (lands in /home/cloudshell-user/)
-mv /home/cloudshell-user/your-file.zip /home/install/
-unzip your-file.zip && cd your-repo-folder
+mv /home/cloudshell-user/sample-grants-genai-assistant-main.zip /home/install/
+unzip sample-grants-genai-assistant-main.zip && cd sample-grants-genai-assistant-main
 ```
 
 ### Step 3: Deploy

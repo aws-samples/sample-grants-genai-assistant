@@ -44,6 +44,39 @@ echo 'export AWS_PAGER=""' >> ~/.bashrc && source ~/.bashrc
 
 ---
 
+## AgentCore Stack Fails to Delete — CFN Internal Handler Error
+
+**Error:**
+```
+Resource handler returned message: "Internal error occurred in the handler."
+(RequestToken: ..., HandlerErrorCode: HandlerInternalFailure)
+```
+Seen on the AgentCore CloudFormation stack during deletion.
+
+**Cause:** The CloudFormation resource provider for AgentCore runtimes throws an internal error when it tries to delete a runtime that is in a certain state. This is a transient service-side issue, not a code bug.
+
+**Fix:**
+1. Go to AWS Console → Amazon Bedrock → AgentCore → Runtimes
+2. Manually delete all GROW2 runtimes listed there
+3. Go to CloudFormation → find the AgentCore stack in `DELETE_FAILED` state
+4. Use **Force delete** to remove it
+5. If the root stack is still in `CREATE_COMPLETE` (not deleting), trigger it manually from CloudShell:
+   ```bash
+   export AWS_PAGER=""
+   aws cloudformation delete-stack \
+     --stack-name amplify-grow2-root-sandbox-<your-id> \
+     --region us-east-1
+   ```
+   Replace `<your-id>` with your actual stack name from the CloudFormation console.
+6. Re-run the delete script to clean up the rest:
+   ```bash
+   ./installation/delete-grow2.sh us-east-1
+   ```
+
+**Note:** The delete script was updated to pre-delete AgentCore runtimes via direct API before touching the CFN stack, which prevents this from happening on fresh installs going forward.
+
+---
+
 ## AgentCore Internal Failure
 
 **Error:**

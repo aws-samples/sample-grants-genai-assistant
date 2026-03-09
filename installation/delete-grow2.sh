@@ -119,6 +119,24 @@ else
 fi
 echo ""
 
+echo "Deleting Amazon Bedrock AgentCore Runtimes (before CFN stack deletion)..."
+AGENT_RUNTIMES=$(aws bedrock-agentcore list-agent-runtimes \
+  --region "$DELETE_REGION" \
+  --query 'agentRuntimes[].agentRuntimeId' \
+  --output text 2>/dev/null || echo "")
+if [ -n "$AGENT_RUNTIMES" ]; then
+  for runtime_id in $AGENT_RUNTIMES; do
+    echo "  - Deleting runtime: $runtime_id"
+    aws bedrock-agentcore delete-agent-runtime --agent-runtime-id "$runtime_id" --region "$DELETE_REGION" 2>/dev/null || true
+  done
+  echo "  Waiting 15 seconds for AgentCore runtimes to finish deleting..."
+  sleep 15
+  echo "AgentCore Runtimes deleted"
+else
+  echo "  No AgentCore Runtimes found"
+fi
+echo ""
+
 echo "Finding Amazon Bedrock Knowledge Bases..."
 KBS=$(aws bedrock-agent list-knowledge-bases \
   --region "$DELETE_REGION" \

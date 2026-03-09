@@ -85,17 +85,3 @@ lambda-functions/*/botocore/
 python/eu_grants_full.json
 #
 .threat-composer
-
-# Bundled Lambda Python dependencies (installed at build time)
-amplify/functions/agent-discovery-search/certifi/
-amplify/functions/agent-discovery-search/certifi-*/
-amplify/functions/agent-discovery-search/charset_normalizer/
-amplify/functions/agent-discovery-search/charset_normalizer-*/
-amplify/functions/agent-discovery-search/idna/
-amplify/functions/agent-discovery-search/idna-*/
-amplify/functions/agent-discovery-search/requests/
-amplify/functions/agent-discovery-search/requests-*/
-amplify/functions/agent-discovery-search/urllib3/
-amplify/functions/agent-discovery-search/urllib3-*/
-amplify/functions/agent-discovery-search/bin/
-amplify/functions/agent-discovery-search/__pycache__/
