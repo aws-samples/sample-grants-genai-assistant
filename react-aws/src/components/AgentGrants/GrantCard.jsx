@@ -505,20 +505,10 @@ const GrantCard = ({ grant, index, totalGrants }) => {
         </button>
       </div>
 
-      {/* Real-time Progress Component */}
-      {showProgress && proposalId && userId && (
+      {/* Progress Component */}
+      {showProgress && proposalId && (
         <div style={{ marginTop: '20px' }}>
-          <ProposalGenerationProgress
-            proposalId={proposalId}
-            userId={userId}
-            onComplete={handleProposalComplete}
-            onError={handleProposalError}
-            appSyncConfig={{
-              eventsApiId: outputs.custom?.eventsApiId,
-              apiKey: outputs.custom?.eventsApiKey,
-              region: outputs.custom?.region || 'us-east-1'
-            }}
-          />
+          <ProposalGenerationProgress proposalId={proposalId} />
         </div>
       )}
 

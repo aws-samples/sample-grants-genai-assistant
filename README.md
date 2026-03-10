@@ -137,14 +137,14 @@ This walkthrough verifies the full pipeline — knowledge base upload, grant sea
 
 1. From the grant detail view, click **Generate Proposal**
 2. When prompted to select documents, choose **Manual** selection
-3. Check the box next to the `optical_thermal_transport.txt` document you uploaded
-4. Click **Continue** to queue the proposal
+3. Click **Select** next to the `TTP-GrantObjectives.txt` document you uploaded
+4. Click **Continue** to queue the proposal — you can close the popup after this
 
 **View the result**
 
 1. In the left nav, click **Proposals**
-2. The proposal will appear with a status of **Queued** or **Generating** — this is normal
-3. Come back in about 10 minutes and refresh the page
+2. The proposal will appear with a status of **Queued** — this is normal, generation runs in the background
+3. Come back in about 10 minutes, go to **Proposals**, and refresh the page
 4. Once complete, the proposal will be available to view and download
 
 ---
