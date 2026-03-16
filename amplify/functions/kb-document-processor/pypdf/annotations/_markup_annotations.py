@@ -1,13 +1,14 @@
 import sys
+import uuid
 from abc import ABC
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
-from .._utils import deprecate_with_replacement
 from ..constants import AnnotationFlag
 from ..generic import ArrayObject, DictionaryObject
 from ..generic._base import (
     BooleanObject,
     FloatObject,
+    IndirectObject,
     NameObject,
     NumberObject,
     TextStringObject,
@@ -24,10 +25,10 @@ else:
     from typing_extensions import TypeAlias
 
 
-Vertex: TypeAlias = Tuple[float, float]
+Vertex: TypeAlias = tuple[float, float]
 
 
-def _get_bounding_rectangle(vertices: List[Vertex]) -> RectangleObject:
+def _get_bounding_rectangle(vertices: list[Vertex]) -> RectangleObject:
     x_min, y_min = vertices[0][0], vertices[0][1]
     x_max, y_max = vertices[0][0], vertices[0][1]
     for x, y in vertices:
@@ -35,8 +36,7 @@ def _get_bounding_rectangle(vertices: List[Vertex]) -> RectangleObject:
         y_min = min(y_min, y)
         x_max = max(x_max, x)
         y_max = max(y_max, y)
-    rect = RectangleObject((x_min, y_min, x_max, y_max))
-    return rect
+    return RectangleObject((x_min, y_min, x_max, y_max))
 
 
 class MarkupAnnotation(AnnotationDictionary, ABC):
@@ -46,12 +46,56 @@ class MarkupAnnotation(AnnotationDictionary, ABC):
     Args:
         title_bar: Text to be displayed in the title bar of the annotation;
             by convention this is the name of the author
+        in_reply_to: The annotation that this annotation is "in reply to"
+            (PDF 1.5). Can be either an annotation (previously added using
+            :meth:`~pypdf.PdfWriter.add_annotation`) or a reference to the
+            target annotation.
+        reply_type: The relationship between this annotation and the one
+            specified by ``in_reply_to``. Either ``"R"`` (a reply, default)
+            or ``"Group"`` (grouped with the parent annotation). Raises
+            ``ValueError`` if a non-default value is provided without
+            ``in_reply_to``.
+        annotation_name: A text string uniquely identifying this annotation
+            among all annotations on its page. Automatically generated when
+            ``in_reply_to`` is set and no name is provided. Raises
+            ``ValueError`` if provided without ``in_reply_to``.
 
     """
 
-    def __init__(self, *, title_bar: Optional[str] = None):
+    def __init__(
+        self,
+        *,
+        title_bar: Optional[str] = None,
+        in_reply_to: Optional[Union[DictionaryObject, IndirectObject]] = None,
+        reply_type: Literal["R", "Group"] = "R",
+        annotation_name: Optional[str] = None,
+    ) -> None:
         if title_bar is not None:
             self[NameObject("/T")] = TextStringObject(title_bar)
+        if annotation_name is not None and in_reply_to is None:
+            raise ValueError(
+                "annotation_name is only supported when in_reply_to is set"
+            )
+        if reply_type != "R" and in_reply_to is None:
+            raise ValueError(
+                "reply_type is only meaningful when in_reply_to is set"
+            )
+        if in_reply_to is not None:
+            if isinstance(in_reply_to, IndirectObject):
+                ref: IndirectObject = in_reply_to
+            else:
+                indirect_ref = getattr(in_reply_to, "indirect_reference", None)
+                if not isinstance(indirect_ref, IndirectObject):
+                    raise ValueError(
+                        "in_reply_to must be a registered annotation "
+                        "(added via writer.add_annotation() first)"
+                    )
+                ref = indirect_ref
+            self[NameObject("/IRT")] = ref
+            self[NameObject("/RT")] = NameObject(f"/{reply_type}")
+            if annotation_name is None:
+                annotation_name = str(uuid.uuid4())
+            self[NameObject("/NM")] = TextStringObject(annotation_name)
 
 
 class Text(MarkupAnnotation):
@@ -70,12 +114,12 @@ class Text(MarkupAnnotation):
     def __init__(
         self,
         *,
-        rect: Union[RectangleObject, Tuple[float, float, float, float]],
+        rect: Union[RectangleObject, tuple[float, float, float, float]],
         text: str,
         open: bool = False,
         flags: int = NO_FLAGS,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
         self[NameObject("/Subtype")] = NameObject("/Text")
         self[NameObject("/Rect")] = RectangleObject(rect)
@@ -91,7 +135,7 @@ class FreeText(MarkupAnnotation):
         self,
         *,
         text: str,
-        rect: Union[RectangleObject, Tuple[float, float, float, float]],
+        rect: Union[RectangleObject, tuple[float, float, float, float]],
         font: str = "Helvetica",
         bold: bool = False,
         italic: bool = False,
@@ -100,7 +144,7 @@ class FreeText(MarkupAnnotation):
         border_color: Optional[str] = "000000",
         background_color: Optional[str] = "ffffff",
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
         self[NameObject("/Subtype")] = NameObject("/FreeText")
         self[NameObject("/Rect")] = RectangleObject(rect)
@@ -153,10 +197,10 @@ class Line(MarkupAnnotation):
         self,
         p1: Vertex,
         p2: Vertex,
-        rect: Union[RectangleObject, Tuple[float, float, float, float]],
+        rect: Union[RectangleObject, tuple[float, float, float, float]],
         text: str = "",
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
         self.update(
             {
@@ -191,12 +235,12 @@ class Line(MarkupAnnotation):
 class PolyLine(MarkupAnnotation):
     def __init__(
         self,
-        vertices: List[Vertex],
+        vertices: list[Vertex],
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
         if len(vertices) == 0:
-            raise ValueError("A polygon needs at least 1 vertex with two coordinates")
+            raise ValueError("A polyline needs at least 1 vertex with two coordinates")
         coord_list = []
         for x, y in vertices:
             coord_list.append(NumberObject(x))
@@ -213,15 +257,11 @@ class PolyLine(MarkupAnnotation):
 class Rectangle(MarkupAnnotation):
     def __init__(
         self,
-        rect: Union[RectangleObject, Tuple[float, float, float, float]],
+        rect: Union[RectangleObject, tuple[float, float, float, float]],
         *,
         interior_color: Optional[str] = None,
         **kwargs: Any,
-    ):
-        if "interiour_color" in kwargs:
-            deprecate_with_replacement("interiour_color", "interior_color", "6.0.0")
-            interior_color = kwargs["interiour_color"]
-            del kwargs["interiour_color"]
+    ) -> None:
         super().__init__(**kwargs)
         self.update(
             {
@@ -241,12 +281,12 @@ class Highlight(MarkupAnnotation):
     def __init__(
         self,
         *,
-        rect: Union[RectangleObject, Tuple[float, float, float, float]],
+        rect: Union[RectangleObject, tuple[float, float, float, float]],
         quad_points: ArrayObject,
         highlight_color: str = "ff0000",
         printing: bool = False,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
         self.update(
             {
@@ -265,15 +305,11 @@ class Highlight(MarkupAnnotation):
 class Ellipse(MarkupAnnotation):
     def __init__(
         self,
-        rect: Union[RectangleObject, Tuple[float, float, float, float]],
+        rect: Union[RectangleObject, tuple[float, float, float, float]],
         *,
         interior_color: Optional[str] = None,
         **kwargs: Any,
-    ):
-        if "interiour_color" in kwargs:
-            deprecate_with_replacement("interiour_color", "interior_color", "6.0.0")
-            interior_color = kwargs["interiour_color"]
-            del kwargs["interiour_color"]
+    ) -> None:
         super().__init__(**kwargs)
 
         self.update(
@@ -293,9 +329,9 @@ class Ellipse(MarkupAnnotation):
 class Polygon(MarkupAnnotation):
     def __init__(
         self,
-        vertices: List[Tuple[float, float]],
+        vertices: list[tuple[float, float]],
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
         if len(vertices) == 0:
             raise ValueError("A polygon needs at least 1 vertex with two coordinates")

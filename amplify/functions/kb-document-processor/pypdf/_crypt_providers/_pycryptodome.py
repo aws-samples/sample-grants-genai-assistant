@@ -28,10 +28,8 @@
 import secrets
 
 from Crypto import __version__
-# nosec B413 - pyCrypto required by PDF specification for legacy PDF encryption support
-from Crypto.Cipher import AES, ARC4  # nosec B413
-# nosec B413 - Padding required by PDF specification
-from Crypto.Util.Padding import pad  # nosec B413
+from Crypto.Cipher import AES, ARC4
+from Crypto.Util.Padding import pad
 
 from pypdf._crypt_providers._base import CryptBase
 

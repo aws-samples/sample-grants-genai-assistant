@@ -28,7 +28,7 @@ import hashlib
 import secrets
 import struct
 from enum import Enum, IntEnum
-from typing import Any, Dict, Optional, Tuple, Union, cast
+from typing import Any, Optional, Union, cast
 
 from pypdf._crypt_providers import (
     CryptAES,
@@ -72,7 +72,7 @@ class CryptFilter:
         if isinstance(obj, ByteStringObject):
             data = self.str_crypt.encrypt(obj.original_bytes)
             obj = ByteStringObject(data)
-        if isinstance(obj, TextStringObject):
+        elif isinstance(obj, TextStringObject):
             data = self.str_crypt.encrypt(obj.get_encoded_bytes())
             obj = ByteStringObject(data)
         elif isinstance(obj, StreamObject):
@@ -191,7 +191,7 @@ class AlgV4:
 
         """
         a = _padding(password)
-        u_hash = hashlib.md5(a, usedforsecurity=False)
+        u_hash = hashlib.md5(a)
         u_hash.update(o_entry)
         u_hash.update(struct.pack("<I", P))
         u_hash.update(id1_entry)
@@ -201,7 +201,7 @@ class AlgV4:
         length = key_size // 8
         if rev >= 3:
             for _ in range(50):
-                u_hash_digest = hashlib.md5(u_hash_digest[:length], usedforsecurity=False).digest()
+                u_hash_digest = hashlib.md5(u_hash_digest[:length]).digest()
         return u_hash_digest[:length]
 
     @staticmethod
@@ -247,14 +247,13 @@ class AlgV4:
 
         """
         a = _padding(owner_password)
-        o_hash_digest = hashlib.md5(a, usedforsecurity=False).digest()
+        o_hash_digest = hashlib.md5(a).digest()
 
         if rev >= 3:
             for _ in range(50):
-                o_hash_digest = hashlib.md5(o_hash_digest, usedforsecurity=False).digest()
+                o_hash_digest = hashlib.md5(o_hash_digest).digest()
 
-        rc4_key = o_hash_digest[: key_size // 8]
-        return rc4_key
+        return o_hash_digest[: key_size // 8]
 
     @staticmethod
     def compute_O_value(rc4_key: bytes, user_password: bytes, rev: int) -> bytes:
@@ -274,7 +273,7 @@ class AlgV4:
         rc4_enc = rc4_encrypt(rc4_key, a)
         if rev >= 3:
             for i in range(1, 20):
-                key = bytes(bytearray(x ^ i for x in rc4_key))
+                key = bytes(x ^ i for x in rc4_key)
                 rc4_enc = rc4_encrypt(key, rc4_enc)
         return rc4_enc
 
@@ -303,8 +302,7 @@ class AlgV4:
 
         """
         if rev <= 2:
-            value = rc4_encrypt(key, _PADDING)
-            return value
+            return rc4_encrypt(key, _PADDING)
 
         """
         Algorithm 5: Computing the encryption dictionary’s U (user password) value.
@@ -331,11 +329,11 @@ class AlgV4:
            invocation of the RC4 function and store the 32-byte result as the
            value of the U entry in the encryption dictionary.
         """
-        u_hash = hashlib.md5(_PADDING, usedforsecurity=False)
+        u_hash = hashlib.md5(_PADDING)
         u_hash.update(id1_entry)
         rc4_enc = rc4_encrypt(key, u_hash.digest())
         for i in range(1, 20):
-            rc4_key = bytes(bytearray(x ^ i for x in key))
+            rc4_key = bytes(x ^ i for x in key)
             rc4_enc = rc4_encrypt(rc4_key, rc4_enc)
         return _padding(rc4_enc)
 
@@ -457,7 +455,7 @@ class AlgV4:
         else:
             user_password = o_entry
             for i in range(19, -1, -1):
-                key = bytes(bytearray(x ^ i for x in rc4_key))
+                key = bytes(x ^ i for x in rc4_key)
                 user_password = rc4_decrypt(key, user_password)
         return AlgV4.verify_user_password(
             user_password,
@@ -542,8 +540,7 @@ class AlgV5:
             return b""
         iv = bytes(0 for _ in range(16))
         tmp_key = AlgV5.calculate_hash(R, password, o_value[40:48], u_value[:48])
-        key = aes_cbc_decrypt(tmp_key, iv, oe_value)
-        return key
+        return aes_cbc_decrypt(tmp_key, iv, oe_value)
 
     @staticmethod
     def verify_user_password(
@@ -574,7 +571,7 @@ class AlgV5:
 
     @staticmethod
     def calculate_hash(R: int, password: bytes, salt: bytes, udata: bytes) -> bytes:
-        # from https://github.com/qpdf/qpdf/blob/main/libqpdf/QPDF_encryption.cc
+        # https://github.com/qpdf/qpdf/blob/main/libqpdf/QPDF_encryption.cc
         k = hashlib.sha256(password + salt + udata).digest()
         if R < 6:
             return k
@@ -628,7 +625,7 @@ class AlgV5:
         key: bytes,
         p: int,
         metadata_encrypted: bool,
-    ) -> Dict[Any, Any]:
+    ) -> dict[Any, Any]:
         user_password = user_password[:127]
         owner_password = owner_password[:127]
         u_value, ue_value = AlgV5.compute_U_value(R, user_password, key)
@@ -643,7 +640,7 @@ class AlgV5:
         }
 
     @staticmethod
-    def compute_U_value(R: int, password: bytes, key: bytes) -> Tuple[bytes, bytes]:
+    def compute_U_value(R: int, password: bytes, key: bytes) -> tuple[bytes, bytes]:
         """
         Algorithm 3.8 Computing the encryption dictionary’s U (user password)
         and UE (user encryption key) values.
@@ -682,7 +679,7 @@ class AlgV5:
     @staticmethod
     def compute_O_value(
         R: int, password: bytes, key: bytes, u_value: bytes
-    ) -> Tuple[bytes, bytes]:
+    ) -> tuple[bytes, bytes]:
         """
         Algorithm 3.9 Computing the encryption dictionary’s O (owner password)
         and OE (owner encryption key) values.
@@ -761,8 +758,7 @@ class AlgV5:
         b8 = b"T" if metadata_encrypted else b"F"
         rr = secrets.token_bytes(4)
         data = struct.pack("<I", p) + b"\xff\xff\xff\xff" + b8 + b"adb" + rr
-        perms = aes_ecb_encrypt(key, data)
-        return perms
+        return aes_ecb_encrypt(key, data)
 
 
 class PasswordType(IntEnum):
@@ -781,7 +777,7 @@ class EncryptAlgorithm(tuple, Enum):  # type: ignore # noqa: SLOT001
 
 
 class EncryptionValues:
-    O: bytes  # noqa
+    O: bytes  # noqa: E741
     U: bytes
     OE: bytes
     UE: bytes
@@ -838,7 +834,7 @@ class Encryption:
         self.StmF = StmF
         self.StrF = StrF
         self.EFF = EFF
-        self.values: EncryptionValues = values if values else EncryptionValues()
+        self.values: EncryptionValues = values or EncryptionValues()
 
         self._password_type = PasswordType.NOT_DECRYPTED
         self._key: Optional[bytes] = None
@@ -922,8 +918,9 @@ class Encryption:
         key = self._key
         n = 5 if self.V == 1 else self.Length // 8
         key_data = key[:n] + pack1 + pack2
-        key_hash = hashlib.md5(key_data, usedforsecurity=False)
+        key_hash = hashlib.md5(key_data)
         rc4_key = key_hash.digest()[: min(n + 5, 16)]
+
         # for AES-128
         key_hash.update(b"sAlT")
         aes128_key = key_hash.digest()[: min(n + 5, 16)]
@@ -941,14 +938,14 @@ class Encryption:
     def _get_crypt(
         method: str, rc4_key: bytes, aes128_key: bytes, aes256_key: bytes
     ) -> CryptBase:
-        if method == "/AESV3":
-            return CryptAES(aes256_key)
         if method == "/AESV2":
             return CryptAES(aes128_key)
-        elif method == "/Identity":
+        if method == "/AESV3":
+            return CryptAES(aes256_key)
+        if method == "/Identity":
             return CryptIdentity()
-        else:
-            return CryptRC4(rc4_key)
+
+        return CryptRC4(rc4_key)
 
     @staticmethod
     def _encode_password(password: Union[bytes, str]) -> bytes:
@@ -969,7 +966,7 @@ class Encryption:
             self._key = key
         return rc
 
-    def verify_v4(self, password: bytes) -> Tuple[bytes, PasswordType]:
+    def verify_v4(self, password: bytes) -> tuple[bytes, PasswordType]:
         # verify owner password first
         key = AlgV4.verify_owner_password(
             password,
@@ -997,7 +994,7 @@ class Encryption:
             return key, PasswordType.USER_PASSWORD
         return b"", PasswordType.NOT_DECRYPTED
 
-    def verify_v5(self, password: bytes) -> Tuple[bytes, PasswordType]:
+    def verify_v5(self, password: bytes) -> tuple[bytes, PasswordType]:
         # TODO: use SASLprep process
         # verify owner password first
         key = AlgV5.verify_owner_password(
@@ -1129,6 +1126,10 @@ class Encryption:
         alg_rev = cast(int, encryption_entry["/R"])
         perm_flags = cast(int, encryption_entry["/P"])
         key_bits = encryption_entry.get("/Length", 40)
+        if alg_ver == 4 and stm_filter == "/AESV2":
+            cf_dict = cast(DictionaryObject, filters[encryption_entry["/StmF"]])  # type: ignore[index]
+            # CF /Length is in bytes (default 16 for AES-128), convert to bits
+            key_bits = cast(int, cf_dict.get("/Length", 16)) * 8
         encrypt_metadata = encryption_entry.get("/EncryptMetadata")
         encrypt_metadata = (
             encrypt_metadata.value if encrypt_metadata is not None else True

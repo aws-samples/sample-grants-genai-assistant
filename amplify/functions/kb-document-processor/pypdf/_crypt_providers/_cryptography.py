@@ -46,8 +46,7 @@ crypt_provider = ("cryptography", __version__)
 
 class CryptRC4(CryptBase):
     def __init__(self, key: bytes) -> None:
-        # nosec B304 - ARC4 cipher required by PDF specification for legacy PDF encryption
-        self.cipher = Cipher(ARC4(key), mode=None)  # nosec B304
+        self.cipher = Cipher(ARC4(key), mode=None)
 
     def encrypt(self, data: bytes) -> bytes:
         encryptor = self.cipher.encryptor()
@@ -90,14 +89,12 @@ class CryptAES(CryptBase):
 
 
 def rc4_encrypt(key: bytes, data: bytes) -> bytes:
-    # nosec B304 - ARC4 cipher required by PDF specification for legacy PDF encryption
-    encryptor = Cipher(ARC4(key), mode=None).encryptor()  # nosec B304
+    encryptor = Cipher(ARC4(key), mode=None).encryptor()
     return encryptor.update(data) + encryptor.finalize()
 
 
 def rc4_decrypt(key: bytes, data: bytes) -> bytes:
-    # nosec B304 - ARC4 cipher required by PDF specification for legacy PDF encryption
-    decryptor = Cipher(ARC4(key), mode=None).decryptor()  # nosec B304
+    decryptor = Cipher(ARC4(key), mode=None).decryptor()
     return decryptor.update(data) + decryptor.finalize()
 
 
