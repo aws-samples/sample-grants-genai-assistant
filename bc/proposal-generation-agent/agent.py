@@ -1443,53 +1443,77 @@ def prepare_prompts(prompts: Dict[str, Dict], grant_data: Dict, kb_context: Dict
 
     return prepared
 
-def generate_section_with_claude(prompt: str, section_name: str) -> str:
-    """Call Bedrock Claude with STREAMING to generate one section"""
+def generate_section_with_claude(prompt: str, section_name: str, max_retries: int = 3) -> str:
+    """Call Bedrock Claude with STREAMING to generate one section.
+    
+    Retries up to max_retries times on transient internalServerException errors
+    using exponential backoff (5s, 10s, 20s).
+    """
     print(f"[Proposal Agent] 🤖 invoke_model_with_response_stream → {CLAUDE_MODEL_ID} for '{section_name}'", flush=True)
     logger.info(f"[Proposal Agent] Generating section: {section_name}")
     
-    try:
-        response = bedrock_runtime.invoke_model_with_response_stream(
-            modelId=CLAUDE_MODEL_ID,
-            body=json.dumps({
-                'anthropic_version': 'bedrock-2023-05-31',
-                'max_tokens': 32000,
-                'temperature': 0.3,
-                'messages': [
-                    {
-                        'role': 'user',
-                        'content': prompt
-                    }
-                ]
-            })
-        )
-        
-        # Collect streamed response
-        content = ""
-        stream = response.get('body')
-        
-        if stream:
-            for event in stream:
-                chunk = event.get('chunk')
-                if chunk:
-                    chunk_data = json.loads(chunk.get('bytes').decode())
-                    
-                    if chunk_data['type'] == 'content_block_delta':
-                        delta = chunk_data.get('delta', {})
-                        if delta.get('type') == 'text_delta':
-                            text = delta.get('text', '')
-                            content += text
-        
-        word_count = len(content.split())
-        print(f"[Proposal Agent] ✅ Claude returned {word_count} words for '{section_name}'", flush=True)
-        logger.info(f"[Proposal Agent] ✅ Generated {word_count} words for {section_name}")
-        
-        return content
-        
-    except Exception as e:
-        print(f"[Proposal Agent] ❌ Claude error for '{section_name}': {e}", flush=True)
-        logger.error(f"[Proposal Agent] Error generating {section_name}: {e}")
-        raise
+    last_exception = None
+    for attempt in range(max_retries):
+        if attempt > 0:
+            wait_seconds = 5 * (2 ** (attempt - 1))  # 5s, 10s, 20s
+            print(f"[Proposal Agent] ⏳ Retry {attempt}/{max_retries - 1} for '{section_name}' after {wait_seconds}s...", flush=True)
+            logger.warning(f"[Proposal Agent] Retry {attempt} for {section_name} after {wait_seconds}s")
+            time.sleep(wait_seconds)
+
+        try:
+            response = bedrock_runtime.invoke_model_with_response_stream(
+                modelId=CLAUDE_MODEL_ID,
+                body=json.dumps({
+                    'anthropic_version': 'bedrock-2023-05-31',
+                    'max_tokens': 32000,
+                    'temperature': 0.3,
+                    'messages': [
+                        {
+                            'role': 'user',
+                            'content': prompt
+                        }
+                    ]
+                })
+            )
+            
+            # Collect streamed response
+            content = ""
+            stream = response.get('body')
+            
+            if stream:
+                for event in stream:
+                    chunk = event.get('chunk')
+                    if chunk:
+                        chunk_data = json.loads(chunk.get('bytes').decode())
+                        
+                        if chunk_data['type'] == 'content_block_delta':
+                            delta = chunk_data.get('delta', {})
+                            if delta.get('type') == 'text_delta':
+                                text = delta.get('text', '')
+                                content += text
+            
+            word_count = len(content.split())
+            print(f"[Proposal Agent] ✅ Claude returned {word_count} words for '{section_name}'", flush=True)
+            logger.info(f"[Proposal Agent] ✅ Generated {word_count} words for {section_name}")
+            
+            return content
+
+        except Exception as e:
+            last_exception = e
+            error_str = str(e)
+            # Only retry on transient Bedrock errors
+            if 'internalServerException' in error_str or 'throttlingException' in error_str or 'serviceUnavailableException' in error_str:
+                print(f"[Proposal Agent] ⚠️ Transient error for '{section_name}' (attempt {attempt + 1}/{max_retries}): {e}", flush=True)
+                logger.warning(f"[Proposal Agent] Transient error for {section_name} attempt {attempt + 1}: {e}")
+                continue
+            # Non-retryable error — fail immediately
+            print(f"[Proposal Agent] ❌ Claude error for '{section_name}': {e}", flush=True)
+            logger.error(f"[Proposal Agent] Error generating {section_name}: {e}")
+            raise
+
+    print(f"[Proposal Agent] ❌ Claude failed for '{section_name}' after {max_retries} attempts: {last_exception}", flush=True)
+    logger.error(f"[Proposal Agent] Failed generating {section_name} after {max_retries} attempts: {last_exception}")
+    raise last_exception
 
 def assemble_proposal(sections: Dict[str, Dict], grant_data: Dict, agency: str) -> Dict[str, Any]:
     """Combine sections into complete proposal"""

@@ -175,3 +175,34 @@ with identifier 'pdf_converter_agent' already exists."
 The delete script now handles this automatically — run it before redeploying to ensure all runtimes are cleaned up.
 
 ---
+
+## Proposal Generation Fails — Bedrock internalServerException (Transient)
+
+**Error:**
+```
+An error occurred (internalServerException) when calling the InvokeModelWithResponseStream 
+operation: The system encountered an unexpected error during processing. Try your request again.
+```
+
+**Where it appears:** CloudWatch log group `/aws/bedrock-agentcore/runtimes/proposal_generation_agent-<id>-DEFAULT` in us-east-1. The error surfaces mid-generation, typically while generating a specific section (e.g. "Implementation"), and the proposal is marked `FAILED` in DynamoDB.
+
+**Cause:** This is a transient, service-side error from Bedrock — not a code bug. Common underlying causes include:
+
+- Bedrock capacity pressure: the model is under high load and the request is dropped internally before a response can be streamed
+- Cross-region inference routing hiccup: the `us.*` inference profile routed to a region that was momentarily degraded
+- Stream interruption: the response stream opened successfully but Bedrock threw an internal error mid-stream (visible in the traceback at `eventstream.py` → `_parse_event`)
+- Rare: the request payload was too large for the model's context window at that moment (less likely with Claude Sonnet at 32k max_tokens)
+
+**Fix:** The agent now retries automatically up to 3 times with exponential backoff (5s, 10s, 20s) on this error class. In CloudWatch you will see:
+```
+⏳ Retry 1/2 for 'Implementation' after 5s...
+```
+If all 3 retries fail, the proposal will still be marked `FAILED`. In that case:
+
+1. Simply retry the proposal from the UI — the error is transient and usually resolves within seconds to minutes
+2. Check the [AWS Service Health Dashboard](https://health.aws.amazon.com/health/status) for any active Bedrock incidents in `us-east-1`
+3. If failures are sustained (more than 15-20 minutes), check Bedrock model access is still enabled: AWS Console → Bedrock → Model access
+
+**Note:** This error can also appear for other agents (`proposal_evaluator_agent`, `grants_search_agent_v2`, etc.) — the same retry logic applies. If you see it consistently across all agents, it is more likely a regional Bedrock degradation than an isolated issue.
+
+---
