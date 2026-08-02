@@ -108,17 +108,37 @@ echo "S3 buckets emptied"
 echo ""
 
 echo "Deleting Amazon Bedrock AgentCore Runtimes (before CFN stack deletion)..."
-AGENT_RUNTIMES=$(aws bedrock-agentcore list-agent-runtimes \
+# FIX (2026-08-02): was using the "bedrock-agentcore" service (data-plane API —
+# invoke/sessions/memory only, has no list-agent-runtimes/delete-agent-runtime
+# operations at all). This call always silently failed and fell through to
+# `|| echo ""`, so this pre-cleanup step has never actually deleted anything —
+# confirmed by re-running against a live account. The correct control-plane
+# service (runtime lifecycle: create/list/delete) is "bedrock-agentcore-control".
+# This mattered in practice: without an early head start on deleting these,
+# CloudFormation's own deletion of the AgentCore stack's
+# AWS::BedrockAgentCore::Runtime resources can hit "NotStabilized" (timeout)
+# on some runtimes, leaving the stack DELETE_FAILED with runtimes stuck
+# Ready/Deleting outside of CFN's control.
+AGENT_RUNTIMES=$(aws bedrock-agentcore-control list-agent-runtimes \
   --region "$DELETE_REGION" \
   --query 'agentRuntimes[].agentRuntimeId' \
   --output text 2>/dev/null || echo "")
 if [ -n "$AGENT_RUNTIMES" ]; then
   for runtime_id in $AGENT_RUNTIMES; do
     echo "  - Deleting runtime: $runtime_id"
-    aws bedrock-agentcore delete-agent-runtime --agent-runtime-id "$runtime_id" --region "$DELETE_REGION" 2>/dev/null || true
+    aws bedrock-agentcore-control delete-agent-runtime --agent-runtime-id "$runtime_id" --region "$DELETE_REGION" 2>/dev/null || true
   done
-  echo "  Waiting 15 seconds for AgentCore runtimes to finish deleting..."
-  sleep 15
+  echo "  Waiting for AgentCore runtimes to finish deleting (up to 3 minutes)..."
+  for i in $(seq 1 18); do
+    REMAINING=$(aws bedrock-agentcore-control list-agent-runtimes \
+      --region "$DELETE_REGION" \
+      --query 'agentRuntimes[].agentRuntimeId' \
+      --output text 2>/dev/null || echo "")
+    if [ -z "$REMAINING" ]; then
+      break
+    fi
+    sleep 10
+  done
   echo "AgentCore Runtimes deleted"
 else
   echo "  No AgentCore Runtimes found"
@@ -331,14 +351,17 @@ fi
 echo ""
 
 echo "Deleting Amazon Bedrock AgentCore Runtimes..."
-AGENT_RUNTIMES=$(aws bedrock-agentcore list-agent-runtimes \
+# FIX (2026-08-02): same service-name bug as the Phase 0 pre-cleanup above —
+# "bedrock-agentcore" is the data-plane API and has no runtime-lifecycle
+# operations. Use "bedrock-agentcore-control" instead.
+AGENT_RUNTIMES=$(aws bedrock-agentcore-control list-agent-runtimes \
   --region "$DELETE_REGION" \
   --query 'agentRuntimes[].{Name:agentRuntimeName,ID:agentRuntimeId}' \
   --output text 2>/dev/null || echo "")
 if [ -n "$AGENT_RUNTIMES" ]; then
   echo "$AGENT_RUNTIMES" | while read -r name runtime_id; do
     echo "  - Deleting: $name"
-    aws bedrock-agentcore delete-agent-runtime --agent-runtime-id "$runtime_id" --region "$DELETE_REGION" 2>/dev/null || true
+    aws bedrock-agentcore-control delete-agent-runtime --agent-runtime-id "$runtime_id" --region "$DELETE_REGION" 2>/dev/null || true
   done
   echo "AgentCore Runtimes deleted"
 else
