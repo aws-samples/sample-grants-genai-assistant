@@ -15,13 +15,13 @@ Use this tab to upload research content — papers, technical reports, reference
 
 ### How to Upload
 
-1. Click **Choose File** and select a PDF or TXT file (max 10MB)
+1. Click **Choose File** and select a PDF or TXT file (max 50MB)
 2. Select the **Agency** the document is associated with (e.g., NSF - National Science Foundation)
 3. Select a **Content Category** (e.g., Reference Materials, Research Papers, Technical Docs)
 4. Click **Upload Content Document**
 
 ### Supported formats
-- PDF, TXT only (max 10MB)
+- PDF, TXT only (max 50MB)
 - Word documents (.docx, .doc) are not supported in this tab — use File → Save As → PDF in Word before uploading
 
 ### How documents are used
@@ -39,7 +39,7 @@ Use this tab to upload official grant guidelines, templates, and writing tips. T
 ### How to Upload
 
 1. Click **Choose File** and select your guideline document
-2. Supported formats: PDF, DOCX, DOC, TXT, MD (max 10MB) — note Word and Markdown are supported here but not in Upload Documents
+2. Supported formats: PDF, DOCX, DOC, TXT, MD (max 50MB) — note Word and Markdown are supported here but not in Upload Documents
 3. Fill in **Document Metadata**:
    - **Funding Agency**: e.g., NIH - National Institutes of Health
    - **Grant Type**: e.g., R01

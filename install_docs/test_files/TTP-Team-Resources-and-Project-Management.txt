@@ -1,0 +1,48 @@
+Team Qualifications, Resource Requirements, and Project Management: Nanoscale Thermal Transport Research Program
+
+1. PRINCIPAL INVESTIGATOR EXPERTISE
+
+The PI has designed, built, and validated a time-domain thermoreflectance (TDTR) system incorporating a frequency-doubled pump beam, an expanded probe beam in coaxial geometry, and a single-objective-lens optical imaging system for rapid alignment and focusing. This system has been used to measure thermal transport in bulk liquids, in highly ordered pyrolytic graphite (extracting both cross-plane and in-plane thermal conductivity), and in semiconductor superlattices. The PI has developed a linear-systems analytical framework for interpreting TDTR measurements that unifies the treatment of pulse accumulation and radial (including anisotropic) heat conduction, extending the isotropic multilayer solution to anisotropic materials at no additional computational cost. The PI has also measured thermal conductance at hydrophilic and hydrophobic solid-liquid interfaces, demonstrating that interface chemistry measurably and repeatably affects thermal boundary conductance.
+
+2. RESEARCH METHODOLOGY SUMMARY (for cross-reference with Implementation Plan)
+
+All measurements use the pump-probe TDTR approach: a metal transducer film (70-100 nm, typically aluminum) deposited on the sample of interest is heated by a pump optical pulse, and the resulting change in optical reflectance is measured by a time-delayed probe pulse. Free parameters in an analytical thermal model — typically the sample's thermal conductivity and the transducer/sample interface conductance — are adjusted to fit the measured signal, with transducer film thickness independently determined by picosecond acoustics and transducer thermal conductivity estimated from electrical conductivity via the Wiedemann-Franz law. The diffusion-based analytical model is valid for pump-probe delay times greater than approximately 100 ps in crystalline substrates; shorter-time behavior requires treatment of quasi-ballistic phonon transport.
+
+3. RESOURCE REQUIREMENTS
+
+Personnel:
+- Principal Investigator: overall project direction, thermal model development, data interpretation, and manuscript preparation. [Not sourced from your documents — specific PI time commitment (e.g., months/year) should be confirmed against the actual award budget.]
+- Graduate Research Assistant: primary responsibility for TDTR measurements, sample preparation, thermal model fitting, and data analysis. Expected to develop expertise in ultrafast optics, thin-film characterization, and thermal modeling over the course of the project.
+- Undergraduate Researcher(s): sample preparation support (metal film deposition, surface functionalization), picosecond acoustics measurements for film thickness characterization, and literature/database compilation support.
+
+Equipment: The TDTR platform requires an ultrafast pulsed laser source, optical delay stage, lock-in detection electronics, and thin-film deposition access for transducer fabrication (metal evaporation/sputtering). Additional capability for liquid-cell measurements under applied electric field requires an integrated electrode fixture and a modest high-voltage power supply. [Not sourced from your documents — specific equipment costs and vendor quotes are not included in the source material and would need to be obtained separately for the budget justification.]
+
+Materials and Supplies: Substrate materials for reference and test samples (e.g., Si, SiO2, sapphire, and specialty crystals such as HOPG or superlattice samples), metal deposition targets (aluminum and, where relevant, gold/palladium for nanoparticle work), and surface functionalization chemicals (self-assembled monolayer reagents) for interface chemistry studies. [Not sourced from your documents — specific annual dollar estimates for these categories are not provided in the source material.]
+
+Travel: Domestic conference attendance for the PI and graduate student to present results at venues relevant to the thermal transport and applied physics community. [Not sourced from your documents — specific conference names and per-year travel budget are not specified in the source material.]
+
+Total estimated annual budget: consistent with a typical single-PI CBET-scale award structure supporting one graduate student and limited PI time. [Not sourced from your documents — an exact total dollar figure is not provided in the source material and should be developed from the institution's current rates for stipend, tuition, and fringe.]
+
+4. TEAM TRAINING PLAN
+
+The graduate student will receive training in: ultrafast laser optics and pump-probe measurement technique; thin-film deposition and characterization (picosecond acoustics, electrical conductivity measurement); analytical thermal modeling using the diffusion equation in cylindrical coordinates with pulse accumulation effects; and data analysis including sensitivity studies and uncertainty quantification. This training is designed to produce a researcher capable of independently operating and extending the TDTR platform by the midpoint of the award period.
+
+5. MANAGEMENT PLAN
+
+Weekly individual meetings between the PI and graduate student will review experimental progress, discuss data interpretation, and plan subsequent measurements. [Not sourced from your documents — the exact meeting cadence, e.g. weekly versus biweekly, and whether group meetings are held, is not specified in the source material and represents standard practice rather than a documented commitment.] Quarterly progress will be assessed against a milestone table, with adjustments to the research plan made if measurements do not achieve target accuracy or if a technical approach proves infeasible.
+
+6. RISK ASSESSMENT AND MITIGATION
+
+Risk: Insufficient sensitivity to interface conductance variations for certain material pairs. If the sample's bulk thermal conductivity dominates the measured thermal response, sensitivity to the interface conductance parameter may be too low to extract a reliable value. Mitigation: modulation frequency and transducer thickness can be adjusted (higher modulation frequency and/or thinner transducer increase relative sensitivity to the interface) to recover adequate sensitivity for a given material system.
+
+Risk: Diffusion-model invalidity at short delay times. Because the diffusion picture is not expected to hold for delay times shorter than approximately 100 ps in crystalline substrates, any measurement or model fitting that depends on very short-time data risks misinterpretation. Mitigation: quantitative analysis is restricted to delay times beyond this validated threshold, and departures from diffusion-model predictions at shorter times are treated as evidence of quasi-ballistic transport rather than measurement error.
+
+Risk: Sample-to-sample variability in interface preparation. Bulk disorder and imperfect physical contact between the transducer and sample can affect measured interface conductance independently of the intrinsic material chemistry being studied. Mitigation: multiple samples are prepared and measured under nominally identical conditions to characterize this variability directly, and results are interpreted relative to that measured spread rather than treated as exact single-point values.
+
+Risk: Graduate student recruitment timing. [Not sourced from your documents — no specific recruitment timeline or contingency plan for a delayed start was provided in the source material; this would need to be added based on the PI's actual recruiting plans and department timeline.]
+
+7. DATA MANAGEMENT APPROACH
+
+Raw TDTR data consists of lock-in amplifier output (in-phase and out-of-phase components) as a function of pump-probe delay time, modulation frequency, and, where relevant, spot size — together with sample characterization data such as picosecond acoustic film-thickness traces and electrical conductivity measurements. Processed data consists of extracted thermal conductivity and interface conductance values together with their associated sensitivity/uncertainty estimates.
+
+Data will be stored on institutional research-computing infrastructure with routine backup. [Not sourced from your documents — the specific backup cadence, storage system, and retention period are not specified in the source material.] Processed datasets underlying publications will be made available in a public repository upon acceptance of the associated manuscript, consistent with FAIR (Findable, Accessible, Interoperable, Reusable) principles; analysis code implementing the thermal model will be released as open-source software with sufficient documentation to allow independent reproduction of the fitting procedure. [Not sourced from your documents — the specific repository (e.g., a named data facility) has not been finalized in the source material.]

@@ -52,47 +52,51 @@ You can continue with 0 documents selected if you want the AI to work from the g
 After confirming document selection, the **Proposal Generation Progress** panel shows:
 
 - A progress bar
-- Status messages (e.g., "Initializing proposal generation...")
+- Status messages (e.g., "Initializing proposal generation...", "Generating Implementation...")
 - **Status: QUEUED → PROCESSING → COMPLETE**
 - **Real-time updates: 🟢 Connected** — confirms the live connection is active
 
-Generation typically takes 2-5 minutes. Stay in the browser tab until complete.
+Generation writes each section separately (retrieving section-specific content from your knowledge base, generating with Claude, then scoring how well the section is backed by your documents), converts the result to PDF, and runs a full quality evaluation — so a 3-section proposal typically takes 5-10 minutes end to end. Stay in the browser tab until complete.
 
 ### Step 5: View and Download
 
 1. Go to **Proposals** section
 2. Find your proposal in the list
-3. View the quality score and evaluation breakdown
+3. View the Semantic Search, Grounded, and Quality badges (see below)
 4. Download as HTML or PDF
 
 ---
 
 ## Supported Agencies
 
-The system uses agency-specific AI prompts tailored to each funder's requirements and style. There are 10 prompts covering each agency's key proposal sections:
+The system uses agency-specific AI prompts tailored to each funder's requirements and style. There are 21 prompts across 7 agencies, each covering that agency's key proposal sections:
 
 | Agency | Prompt Sections |
 |--------|----------------|
-| NIH | Approach, Significance & Innovation, Environment & Resources |
 | NSF | Intellectual Merit, Broader Impacts, Implementation |
+| NIH | Significance & Innovation, Approach, Environment & Resources |
 | DOD | Technical Approach, Military Relevance, Execution Plan |
-| European Commission | Implementation (Horizon Europe) |
+| DOE | Scientific Objectives, Technical Approach, Impact & Outcomes |
+| NASA | Scientific/Technical Plan, NASA Relevance, Work Plan |
+| DOT | Project Narrative, Merit Criteria, Project Readiness |
+| European Commission | Excellence, Impact, Implementation (Horizon Europe) |
 
-For grants from other agencies, the system uses a general proposal prompt.
+For grants from other agencies, generation will fail with a message naming the supported agencies above — there's no generic fallback prompt.
 
-The prompts are visible in the **Prompts** tab of the Proposals section and can be edited via **Edit in AWS Console** if you want to customize the writing style or emphasis.
+The prompts are visible (and testable) in the **Prompts** tab of the Proposals section. Actual editing of prompt text happens in the AWS Bedrock console — see the [Prompt Management Guide](prompt-management-guide.md) for details on adding or updating a prompt.
 
 ---
 
 ## How Prompts Work
 
-Each prompt uses three variables filled in automatically at generation time:
+Each prompt uses two variables filled in automatically at generation time:
 
-- **`{{content}}`** — your knowledge base documents (selected manually or automatically)
-- **`{{guidelines}}`** — any Grant Guidelines documents you uploaded to the KB for that agency
+- **`{{content}}`** — content retrieved from your knowledge base for that specific section (not the same block reused for every section — Implementation gets different excerpts than Broader Impacts, for example)
 - **`{{grant_info}}`** — the grant's title, agency, deadline, description, and other attributes from the search result
 
-**The prompts already contain agency-specific proposal writing guidelines built in** — you don't need to upload general agency guidelines to get a well-structured proposal. However, uploading the specific grant's RFP or solicitation document to the **Grant Guidelines** tab in Knowledge Base will further improve the **Guideline Adherence** evaluation score by giving the evaluator structured requirements to check against.
+**The prompts already contain agency-specific proposal writing guidelines built in** — you don't need to upload general agency guidelines to get a well-structured proposal. However, uploading the specific grant's RFP or solicitation document to the **Grant Guidelines** tab in Knowledge Base will further improve the **Guideline Adherence** evaluation score by giving the evaluator more to check the proposal against.
+
+Every prompt also instructs the AI to mark any sentence, figure, or claim that isn't drawn from your documents with **`[Not sourced from your documents]`** — common in budget figures, timelines, or illustrative statistics that a real proposal needs but that your source material doesn't supply. This is what the **Grounded** badge (see below) measures.
 
 ---
 
@@ -107,16 +111,26 @@ Each prompt uses three variables filled in automatically at generation time:
 
 ---
 
+## Understanding the Proposal Badges
+
+Each completed proposal shows up to three badges:
+
+- **⚡ Semantic: [level]** — how relevant your knowledge base documents were to this grant, based on retrieval scores (e.g., MODERATE, GOOD, EXCELLENT)
+- **❓ Grounded: [%]** — what share of the generated text is actually backed by your documents rather than generic/illustrative filler tagged `[Not sourced from your documents]`. Sections like Implementation legitimately score lower here since budget, timeline, and personnel details often aren't in your source material by design — this isn't necessarily a problem to fix.
+- **📊 Quality: [grade] ([%])** — the full 4-dimension evaluation grade (see below). Click it to open the detailed breakdown.
+
+If the Quality badge is missing after a proposal completes, the evaluation step didn't finish in time or failed — the proposal itself is still valid, just without a scored breakdown. Try again, or check with support if it happens repeatedly.
+
 ## Understanding Quality Scores
 
 Every proposal is automatically evaluated across 4 dimensions:
 
-- **Content Quality (30%)**: How well your KB documents matched the grant
-- **Guideline Adherence (40%)**: How well the proposal follows grant requirements
-- **Completeness (20%)**: Whether all expected sections are present
-- **Source Utilization (10%)**: How diverse your source documents were
+- **Content Quality (30%)**: How well your KB documents matched the grant, based on semantic search scores
+- **Guideline Adherence (40%)**: Each proposal section evaluated individually against the guidelines that generated it
+- **Completeness (20%)**: Whether all expected sections are present with adequate word counts
+- **Source Utilization (10%)**: How many document chunks were used and how relevant they were
 
-**Grades:** A (90-100%), B (80-89%), C (70-79%), D (60-69%), F (<60%)
+**Grades:** A (93%+), A- (90%+), B+ (87%+), B (83%+), B- (80%+), C+ (77%+), C (73%+), C- (70%+), D+ (67%+), D (63%+), D- (60%+), F (below 60%)
 
 See the [Evaluation Metrics Guide](evaluation-metrics-guide.md) for full details.
 
@@ -156,5 +170,6 @@ See the [Evaluation Metrics Guide](evaluation-metrics-guide.md) for full details
 
 - **Knowledge Base**: Upload and manage your research documents
 - **Evaluation Metrics**: Understand your proposal quality scores
+- **Prompt Management**: How to view, test, and edit the AI prompts used for generation
 - **Agent Discovery**: Find relevant grants automatically
 - **Grant Search**: Search for grants to generate proposals for

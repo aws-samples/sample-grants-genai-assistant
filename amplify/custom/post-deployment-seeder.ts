@@ -322,7 +322,11 @@ export class PostDeploymentSeeder extends Construct {
                         commands: [
                             'echo "Installing dependencies..."',
                             'pip install boto3 requests',
-                            'npm install -g npm@latest',
+                            // Pin npm to a version compatible with the Node 20 runtime.
+                            // 'npm@latest' now resolves to npm 12+, which requires Node
+                            // >=22 and fails with EBADENGINE on this Node 20 container.
+                            // npm 11 supports Node ^20.17.0 and avoids that drift.
+                            'npm install -g npm@11',
                         ],
                     },
                     pre_build: {

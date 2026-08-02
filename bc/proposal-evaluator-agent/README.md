@@ -133,10 +133,17 @@ Maps semantic search scores to evaluation scores:
 - GREEN (0.51+): 0.90 score - Good quality
 
 ### Guideline Adherence (40%)
-Uses Claude 3.5 Sonnet to analyze:
-- Does proposal address each success criterion?
-- Are required sections present and substantive?
-- Does it follow grant-specific requirements?
+Uses Claude (Sonnet 4.5) to analyze each SECTION separately against the prompt
+that generated it (`proposalContent.json[section].content` vs.
+`prompt[section]`), then combines the per-section scores as a word-count-
+weighted average. Evaluating per-section (rather than one call against the
+first ~10K characters of the assembled HTML) is what lets sections beyond
+the first — e.g. Implementation, which typically carries budget/timeline/
+team content — actually get evaluated on multi-section proposals:
+- Does each section address its own success criteria?
+- Is each section substantive for what it's meant to cover?
+- Does it follow grant-specific requirements (without penalizing a section
+  for content that belongs in a different section)?
 
 ### Completeness (20%)
 Checks:

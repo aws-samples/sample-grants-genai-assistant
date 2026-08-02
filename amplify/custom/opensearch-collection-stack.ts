@@ -26,10 +26,23 @@ import { NagSuppressions } from 'cdk-nag';
 export interface OpenSearchCollectionStackProps {
   collectionName?: string;
   accessLogsBucket?: s3.IBucket; // SECURITY FIX: S1 - Access logs bucket
+
+  // ── OpenSearch Serverless NextGen options ──
+  // Group-level OCU capacity limits. Setting the min values to 0 enables
+  // scale-to-zero (compute drops to 0 OCU after ~10 min idle). Raise the
+  // search minimum to 1 if you need to avoid the ~10-30s cold start on
+  // user-facing queries (at the cost of losing full scale-to-zero savings).
+  minIndexingOcu?: number; // default 0 (scale-to-zero)
+  minSearchOcu?: number;   // default 0 (scale-to-zero)
+  maxIndexingOcu?: number; // default 4
+  maxSearchOcu?: number;   // default 4
+  // Enable GPU-accelerated vector index builds (separately metered).
+  enableVectorAcceleration?: boolean; // default false
 }
 
 export class OpenSearchCollectionStack extends Construct {
   public readonly collection: opensearch.CfnCollection;
+  public readonly collectionGroup: opensearch.CfnCollectionGroup; // NextGen: required group
   public readonly documentBucket: s3.Bucket;
   public readonly bedrockRole: iam.Role;
   public readonly collectionEndpoint: string;
@@ -55,6 +68,10 @@ export class OpenSearchCollectionStack extends Construct {
     // Format: kb-{uniqueId} = 3+1+8 = 12 chars (well under 32 limit)
     const baseCollectionName = props?.collectionName || 'kb';
     const collectionName = `${baseCollectionName}-${uniqueId}`;
+
+    // NextGen: every collection must belong to a collection group.
+    // Same naming rules as collections (3-32 chars, lowercase/digits/hyphen).
+    const collectionGroupName = `${baseCollectionName}-grp-${uniqueId}`;
 
     // For policy names, also use just the unique ID
     const policyPrefix = `kb-${uniqueId}`;
@@ -197,17 +214,47 @@ export class OpenSearchCollectionStack extends Construct {
       }])
     });
 
-    // 6. Create OpenSearch Serverless collection
+    // 5b. NextGen: Collection group (required)
+    // Capacity limits are set at the GROUP level and the group is the unit that
+    // scales to zero. min*=0 enables scale-to-zero; raise minSearch to 1 to avoid
+    // cold starts on user-facing queries.
+    this.collectionGroup = new opensearch.CfnCollectionGroup(this, 'CollectionGroup', {
+      name: collectionGroupName,
+      // 'generation' selects the architecture: CLASSIC | NEXTGEN.
+      // NEXTGEN is required for decoupled compute/storage + scale-to-zero.
+      generation: 'NEXTGEN',
+      // NEXTGEN collection groups REQUIRE standby replicas ENABLED
+      // (service rejects DISABLED for NEXTGEN). Scale-to-zero is achieved via
+      // the min*=0 capacity limits below, not by disabling standby replicas.
+      standbyReplicas: 'ENABLED',
+      description: 'NextGen collection group for the Knowledge Base vector collection',
+      capacityLimits: {
+        minIndexingCapacityInOcu: props?.minIndexingOcu ?? 0,
+        minSearchCapacityInOcu: props?.minSearchOcu ?? 0,
+        maxIndexingCapacityInOcu: props?.maxIndexingOcu ?? 4,
+        maxSearchCapacityInOcu: props?.maxSearchOcu ?? 4,
+      },
+    });
+
+    // 6. Create OpenSearch Serverless collection (NextGen: attached to the group)
     this.collection = new opensearch.CfnCollection(this, 'Collection', {
       name: collectionName,
       type: 'VECTORSEARCH',
-      description: 'Vector search collection for Knowledge Base'
+      description: 'Vector search collection for Knowledge Base',
+      // NextGen: associate the collection with its group
+      collectionGroupName: collectionGroupName,
+      // Optional GPU-accelerated vector index builds (separately metered)
+      ...(props?.enableVectorAcceleration
+        ? { vectorOptions: { serverlessVectorAcceleration: 'ENABLED' } }
+        : {}),
     });
 
     // Dependencies
     this.collection.addDependency(encryptionPolicy);
     this.collection.addDependency(networkPolicy);
     this.collection.addDependency(dataAccessPolicy);
+    // NextGen: the group must exist before the collection can join it
+    this.collection.addDependency(this.collectionGroup);
 
     // 7. Grant OpenSearch permissions to Bedrock role
     this.bedrockRole.addToPolicy(
@@ -248,6 +295,13 @@ export class OpenSearchCollectionStack extends Construct {
       value: collectionName,
       description: 'OpenSearch collection name',
       exportName: `${exportPrefix}-Name`
+    });
+
+    // NextGen: collection group (unit that owns capacity limits / scale-to-zero)
+    new CfnOutput(this, 'CollectionGroupName', {
+      value: collectionGroupName,
+      description: 'OpenSearch Serverless NextGen collection group name',
+      exportName: `${exportPrefix}-GroupName`
     });
 
     new CfnOutput(this, 'BedrockRoleArn', {

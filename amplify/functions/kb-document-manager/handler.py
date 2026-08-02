@@ -228,6 +228,10 @@ def handle_list_documents(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
                 doc['grantMetadata'] = item['grantMetadata']
             if item.get('agency'):
                 doc['agency'] = item['agency']
+            # Extracted-text char count (length of text embedded into the vector
+            # store) so the UI can estimate tokens accurately without a per-doc fetch.
+            if item.get('extractedCharCount') is not None:
+                doc['extractedCharCount'] = int(item['extractedCharCount'])
             
             documents.append(doc)
         
@@ -454,6 +458,11 @@ def handle_get_document_status(event: Dict[str, Any], user_id: str) -> Dict[str,
             document['grantMetadata'] = item['grantMetadata']
         if item.get('agency'):
             document['agency'] = item['agency']
+        # Extracted-text character count = length of the text actually chunked and
+        # embedded into the vector store (for PDFs this is the extracted text, NOT
+        # the raw file). Used by the UI to estimate token usage accurately.
+        if item.get('extractedCharCount') is not None:
+            document['extractedCharCount'] = int(item['extractedCharCount'])
         
         print(f"Document status: {document['status']}")
         return document

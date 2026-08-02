@@ -2,7 +2,7 @@
 """
 Proposal Generation Agent - AgentCore Native
 
-Version: 2.1.1 - Enhanced Diagnostics (2026-02-01)
+Version: 2.1.2 - DOT Agency Support (2026-04-07)
 
 This agent is a self-contained orchestrator that:
 1. Receives proposal request from initiator Lambda
@@ -113,6 +113,20 @@ else:
     CLAUDE_MODEL_ID = f'{_REGION_PREFIX}.anthropic.claude-opus-4-6-v1'
 print(f"[Proposal Agent] ✅ CLAUDE_MODEL_ID: {CLAUDE_MODEL_ID}")
 
+# PROPOSAL_TEMPERATURE env var, optional. Falls back to the existing default.
+try:
+    PROPOSAL_TEMPERATURE = float(os.environ.get('PROPOSAL_TEMPERATURE', '0.3'))
+except ValueError:
+    PROPOSAL_TEMPERATURE = 0.3
+print(f"[Proposal Agent] ✅ PROPOSAL_TEMPERATURE: {PROPOSAL_TEMPERATURE}")
+
+# Contextual grounding (Bedrock Guardrails). Optional — if unset, grounding
+# scoring is simply skipped (fails open, never blocks proposal generation).
+# Version is hardcoded to 'DRAFT' at the call site in score_section_grounding
+# (see that function for why), so no GUARDRAIL_VERSION env var is needed here.
+GUARDRAIL_ID = os.environ.get('GUARDRAIL_ID')
+print(f"[Proposal Agent] ✅ GUARDRAIL_ID: {GUARDRAIL_ID or '(not configured — grounding scoring disabled)'}")
+
 print("[Proposal Agent] STEP 6: Creating boto3 config...")
 # Config optimized for streaming (no long read timeouts needed)
 bedrock_config = Config(
@@ -121,6 +135,36 @@ bedrock_config = Config(
     retries={'max_attempts': 2}
 )
 print("[Proposal Agent] ✅ boto3 config created")
+
+# Config for synchronous A2A calls to OTHER agentcore runtimes (PDF converter,
+# Proposal Evaluator) via invoke_agent_runtime — these are NOT streaming, they
+# block until the callee returns its full response. The default botocore read
+# timeout (60s) is too short for the evaluator: it now runs one Claude call
+# per proposal section sequentially (Task: per-section guideline adherence,
+# 2026-08-02) rather than a single whole-proposal call, so timing scales with
+# section count (observed ~30s/section) rather than being fixed. A short read
+# timeout here doesn't cancel the callee's work (it keeps running), it just
+# makes the CALLER give up and silently skip attaching the evaluation — which
+# is what caused the Quality badge to disappear from the UI even though the
+# evaluator succeeded.
+#
+# This call already runs inside the background thread (app.add_async_task),
+# which AgentCore Runtime supports for up to 8 hours — there's no reason to
+# fit this timeout tightly to today's observed section counts/timing when
+# more sections (new agencies) or a slower Claude call could plausibly push
+# past a tighter bound. Set generously (30 min) rather than reactively — this
+# is a ceiling, not a fixed wait: the call returns as soon as the callee
+# responds, and only actually waits the full 30 min if the callee hangs.
+#
+# max_attempts=1: don't retry on timeout — invoke_agent_runtime starts new
+# work each call, so retrying a slow-but-succeeding call would just waste
+# Claude calls rather than fix anything.
+agentcore_a2a_config = Config(
+    read_timeout=1800,
+    connect_timeout=10,
+    retries={'max_attempts': 1}
+)
+print("[Proposal Agent] ✅ agentcore A2A config created (1800s read timeout)")
 
 print("[Proposal Agent] STEP 7: Initializing AWS clients...")
 # Initialize AWS clients (will use execution role)
@@ -315,24 +359,57 @@ def invoke(payload):
                 print(f"[Proposal Agent] 🔍 PROMPTS FOUND: {len(prompts)} for agency '{agency}'", flush=True)
                 print(f"[Proposal Agent] 🔍 PROMPT KEYS: {list(prompts.keys())}", flush=True)
                 logger.info(f"[Proposal Agent] Found {len(prompts)} prompt(s) for {agency}")
-                
-                # Prepare prompts with actual data
-                prepared_prompts = prepare_prompts(prompts, grant_info, kb_context, agency)
-                logger.info(f"[Proposal Agent] Prepared {len(prepared_prompts)} prompt(s)")
-                
+
+                # Retrieval params captured during the grant-level retrieval (STEP 2),
+                # reused below for per-section (prompt-aware) retrieval. base_content is
+                # the grant-level content used as a fallback for any section that comes
+                # back empty.
+                retrieval = kb_context.get('_retrieval', {})
+                base_content = retrieval.get('base_content') or _kb_context_to_content(kb_context)
+                doc_uri_prefixes = retrieval.get('doc_uri_prefixes')
+                section_max_results = retrieval.get('max_results', 20)
+
                 # ============================================================
-                # STEP 4: GENERATE PROPOSAL SECTIONS
+                # STEP 4: GENERATE PROPOSAL SECTIONS (per-section, prompt-aware retrieval)
                 # ============================================================
                 print(f"[Proposal Agent] ========== STEP 4: GENERATING SECTIONS ==========", flush=True)
                 logger.info(f"[Proposal Agent] ========== STEP 4: GENERATING SECTIONS ==========")
                 
                 sections = {}
-                section_count = len(prepared_prompts)
+                prepared_prompts = {}
+                section_count = len(prompts)
                 print(f"[Proposal Agent] Generating {section_count} section(s)", flush=True)
                 logger.info(f"[Proposal Agent] Generating {section_count} section(s)")
                 
-                for idx, (section_name, prompt) in enumerate(prepared_prompts.items()):
+                for idx, (section_name, prompt_data) in enumerate(prompts.items()):
                     progress = 30 + int((idx / section_count) * 50)
+
+                    # --- Section-aware retrieval: query = grant context + section intent ---
+                    # Each section pulls the excerpts most relevant to THAT section (e.g.
+                    # Broader Impacts vs Intellectual Merit) instead of reusing one generic
+                    # grant-level block for all sections. Retrieval stays scoped to the
+                    # user's selected documents (doc_uri_prefixes). If a section returns no
+                    # chunks, fall back to the grant-level content so a section is never empty.
+                    section_intent = build_section_intent(section_name, prompt_data)
+                    section_researcher_content = base_content
+                    if knowledge_base_id:
+                        try:
+                            section_chunks = retrieve_relevant_chunks(
+                                grant_info, knowledge_base_id, section_max_results, agency,
+                                doc_uri_prefixes, section_intent=section_intent
+                            )
+                            if section_chunks:
+                                section_researcher_content = apply_content_budget(section_chunks, max_chars=120000)
+                            else:
+                                logger.warning(f"[Proposal Agent] ⚠️ Section '{section_name}' returned 0 chunks; "
+                                               f"falling back to grant-level content")
+                        except Exception as e:
+                            logger.error(f"[Proposal Agent] Section-aware retrieval failed for '{section_name}': {e}; "
+                                         f"falling back to grant-level content")
+
+                    # Build the final prompt for this section with its own retrieved content
+                    prompt = build_section_prompt(section_name, prompt_data, grant_info, section_researcher_content, agency)
+                    prepared_prompts[section_name] = prompt
                     
                     print(f"[Proposal Agent] 🤖 Calling Claude for section {idx+1}/{section_count}: {section_name}", flush=True)
                     logger.info(f"[Proposal Agent] Generating section {idx+1}/{section_count}: {section_name}")
@@ -343,11 +420,18 @@ def invoke(payload):
                     
                     # Generate this section with Claude
                     section_content = generate_section_with_claude(prompt, section_name)
-                    
+
+                    # Contextual grounding: report (never block) how much of this
+                    # section is actually backed by the researcher's documents used
+                    # for it, vs. generic/illustrative content. No-op if GUARDRAIL_ID
+                    # isn't configured or the call fails.
+                    grounding = score_section_grounding(section_name, section_intent, section_researcher_content, section_content)
+
                     sections[section_name] = {
                         'title': section_name.replace('_', ' ').title(),
                         'content': section_content,
-                        'wordCount': len(section_content.split())
+                        'wordCount': len(section_content.split()),
+                        **({'grounding': grounding} if grounding else {})
                     }
                     
                     print(f"[Proposal Agent] ✅ Section {idx+1}/{section_count} done: {section_name} ({len(section_content.split())} words)", flush=True)
@@ -447,7 +531,18 @@ def invoke(payload):
                 if kb_context.get('contentQuality'):
                     completion_metadata['contentQuality'] = kb_context['contentQuality']
                     logger.info(f"[Proposal Agent] ✅ Including content quality: {kb_context['contentQuality']['level']}")
-                
+
+                # Add per-section grounding scores if available (contextual grounding,
+                # informational only — see score_section_grounding docstring). Lets the
+                # UI show, per section, how much content is backed by the researcher's
+                # documents vs. generic/illustrative proposal boilerplate.
+                section_grounding = {
+                    name: s['grounding'] for name, s in sections.items() if s.get('grounding')
+                }
+                if section_grounding:
+                    completion_metadata['sectionGrounding'] = section_grounding
+                    logger.info(f"[Proposal Agent] ✅ Including grounding scores for {len(section_grounding)} section(s)")
+
                 update_proposal_status(proposal_id, 'COMPLETED', completion_metadata)
                 
                 logger.info(f"[Proposal Agent] ✅ Proposal generation complete: {proposal_id}")
@@ -616,8 +711,9 @@ def call_pdf_converter_agent(html_content: str, proposal_id: str, user_id: str, 
         }
         payload_json = json.dumps(payload_dict)
         
-        # Create bedrock-agentcore client
-        bedrock_agentcore = boto3.client('bedrock-agentcore', region_name=AWS_REGION)
+        # Create bedrock-agentcore client (extended read timeout — see
+        # agentcore_a2a_config definition for why)
+        bedrock_agentcore = boto3.client('bedrock-agentcore', region_name=AWS_REGION, config=agentcore_a2a_config)
         
         # Invoke PDF converter agent
         logger.info(f"[Proposal Agent] 🚀 Invoking PDF converter agent...")
@@ -693,8 +789,11 @@ def call_proposal_evaluator_agent(
         }
         payload_json = json.dumps(payload_dict)
         
-        # Create bedrock-agentcore client
-        bedrock_agentcore = boto3.client('bedrock-agentcore', region_name=AWS_REGION)
+        # Create bedrock-agentcore client (extended read timeout — the
+        # evaluator now runs one Claude call per section sequentially, so a
+        # multi-section proposal can legitimately take 60-120s+; see
+        # agentcore_a2a_config definition for full context)
+        bedrock_agentcore = boto3.client('bedrock-agentcore', region_name=AWS_REGION, config=agentcore_a2a_config)
         
         # Invoke Proposal Evaluator agent
         logger.info(f"[Proposal Agent] 🚀 Invoking Proposal Evaluator agent...")
@@ -775,6 +874,17 @@ def detect_agency(grant_data: Dict[str, Any]) -> str:
         normalized = 'NASA'
         logger.info(f"[Proposal Agent] ✅ Normalized: '{agency}' → '{normalized}'")
         return normalized
+
+    if any(kw in agency_upper for kw in [
+        'DOT', 'DEPARTMENT OF TRANSPORTATION', 'FHWA', 'FEDERAL HIGHWAY',
+        'FTA', 'FEDERAL TRANSIT', 'FRA', 'FEDERAL RAILROAD', 'NHTSA',
+        'NATIONAL HIGHWAY TRAFFIC SAFETY', 'FAA', 'FEDERAL AVIATION',
+        'MARAD', 'MARITIME ADMINISTRATION', 'VOLPE', 'BUILD', 'RAISE',
+        'INFRA', 'TIGER', 'SMART GRANT', 'SS4A', 'UTC'
+    ]):
+        normalized = 'DOT'
+        logger.info(f"[Proposal Agent] ✅ Normalized: '{agency}' → '{normalized}'")
+        return normalized
     
     # European Agencies - ALL map to "European-Commission-Prompt" for prompt lookup
     # This includes: Horizon Europe, Digital Europe Programme, LIFE Programme, etc.
@@ -846,27 +956,35 @@ def fetch_document_content_from_s3(doc_id: str, user_id: str, document_table_nam
         return None
 
 
-def retrieve_relevant_chunks(grant_data: Dict[str, Any], kb_id: str, max_results: int = 20, agency: str = None) -> List[Dict[str, Any]]:
+def retrieve_relevant_chunks(grant_data: Dict[str, Any], kb_id: str, max_results: int = 20, agency: str = None, doc_uri_prefixes: List[str] = None, section_intent: str = None) -> List[Dict[str, Any]]:
     """
     Use Bedrock KB retrieve() to get semantically relevant chunks.
-    
-    NOTE: Agency filtering is done at the DynamoDB level (before calling this function).
-    OpenSearch does NOT have agency metadata, so we don't filter by agency here.
-    We rely on DynamoDB to give us the right document IDs, then OpenSearch finds
-    semantically relevant chunks from those documents.
-    
+
+    Document scoping: when `doc_uri_prefixes` is provided, retrieval is restricted
+    to chunks whose source object URI starts with one of those prefixes (the
+    per-document S3 folders, e.g. s3://<bucket>/user-<userId>/<documentId>/). This
+    is what makes the user's document selection (manual mode) and the agency
+    document set (automatic mode) actually govern which content is used — Bedrock
+    exposes the built-in metadata key `x-amz-bedrock-kb-source-uri` for this, so no
+    custom metadata/re-ingestion is required. A prefix `startsWith` also correctly
+    captures both the original file and its extracted-text sibling for PDFs.
+    When no prefixes are given, retrieval falls back to searching the whole KB.
+
     Args:
         grant_data: Grant information including title and description
         kb_id: Knowledge Base ID
         max_results: Maximum number of chunks to retrieve (default 20)
         agency: Agency name (for logging only, not used for filtering)
-    
+        doc_uri_prefixes: Optional list of s3:// URI prefixes to scope retrieval to
+
     Returns:
         List of relevant chunks with content and metadata
     """
     logger.info(f"[Proposal Agent] 🔍 Using semantic search to find relevant content...")
-    logger.info(f"[Proposal Agent] ℹ️  Agency filtering done at DynamoDB level (agency={agency})")
-    logger.info(f"[Proposal Agent] ℹ️  OpenSearch will search ALL documents (no agency filter)")
+    if doc_uri_prefixes:
+        logger.info(f"[Proposal Agent] 🔒 Scoping retrieval to {len(doc_uri_prefixes)} selected document(s)")
+    else:
+        logger.info(f"[Proposal Agent] ℹ️  No document scope provided — searching ALL documents")
     
     # Build rich semantic query from grant info
     query_parts = [grant_data.get('title', '')]
@@ -879,7 +997,16 @@ def retrieve_relevant_chunks(grant_data: Dict[str, Any], kb_id: str, max_results
     elif grant_data.get('description'):
         query_parts.append(grant_data.get('description', '')[:1000])
     
-    search_query = ' '.join(query_parts).strip()
+    # Section-aware retrieval: blend the section's intent (section name + the agency
+    # prompt's description of what that section should cover) WITH the grant context.
+    # This pulls back excerpts relevant to THIS section (e.g. "broader impacts" vs
+    # "intellectual merit") rather than the same grant-generic set for every section.
+    # We keep the grant context in the query so results stay on-topic for the grant.
+    if section_intent:
+        query_parts.append(section_intent)
+        logger.info(f"[Proposal Agent] 🎯 Section-aware query intent: {section_intent[:150]}")
+    
+    search_query = ' '.join(p for p in query_parts if p).strip()
     logger.info(f"[Proposal Agent] 📝 Search query: {search_query[:150]}...")
     
     try:
@@ -887,17 +1014,26 @@ def retrieve_relevant_chunks(grant_data: Dict[str, Any], kb_id: str, max_results
             logger.warning(f"[Proposal Agent] ⚠️ No Knowledge Base found, skipping semantic search")
             return []
         
-        # Build retrieval configuration WITHOUT agency filter
-        # (OpenSearch doesn't have agency metadata - that's only in DynamoDB)
-        retrieval_config = {
-            'vectorSearchConfiguration': {
-                'numberOfResults': max_results
-            }
+        # Build retrieval configuration. If a document scope was provided, filter on
+        # the built-in source-URI metadata key so ONLY the selected documents'
+        # chunks are considered (see function docstring).
+        vector_config = {
+            'numberOfResults': max_results
         }
+        if doc_uri_prefixes:
+            prefix_filters = [
+                {'startsWith': {'key': 'x-amz-bedrock-kb-source-uri', 'value': p}}
+                for p in doc_uri_prefixes
+            ]
+            vector_config['filter'] = (
+                prefix_filters[0] if len(prefix_filters) == 1 else {'orAll': prefix_filters}
+            )
+        retrieval_config = {'vectorSearchConfiguration': vector_config}
         
         logger.info(f"[Proposal Agent] 🔎 Calling bedrock_agent_runtime.retrieve()...")
         logger.info(f"[Proposal Agent]    KB ID: {kb_id}")
         logger.info(f"[Proposal Agent]    Max results: {max_results}")
+        logger.info(f"[Proposal Agent]    Doc scope: {len(doc_uri_prefixes) if doc_uri_prefixes else 0} prefix(es)")
         logger.info(f"[Proposal Agent]    Query length: {len(search_query)} chars")
         
         response = bedrock_agent_runtime.retrieve(
@@ -1085,6 +1221,36 @@ def apply_content_budget(chunks: List[Dict[str, Any]], max_chars: int = 120000) 
     
     return '\n\n'.join(content_parts)
 
+def apply_content_budget(chunks: List[Dict[str, Any]], max_chars: int = 120000) -> str:
+    """Sort chunks by relevance and concatenate up to a character budget.
+
+    Shared by the grant-level retrieval and the per-section retrieval so both use
+    identical budgeting (120K chars ≈ 30K tokens). Returns the combined content string.
+    """
+    sorted_chunks = sorted(chunks, key=lambda x: x.get('score', 0), reverse=True)
+    content_parts = []
+    total_chars = 0
+    chunks_included = 0
+
+    for chunk in sorted_chunks:
+        chunk_content = chunk.get('content', {}).get('text', '')
+        chunk_chars = len(chunk_content)
+        if total_chars + chunk_chars > max_chars:
+            remaining = max_chars - total_chars
+            if remaining > 500:
+                chunk_content = chunk_content[:remaining] + "..."
+                chunk_chars = len(chunk_content)
+            else:
+                break
+        content_parts.append(chunk_content)
+        total_chars += chunk_chars
+        chunks_included += 1
+
+    logger.info(f"[Proposal Agent] ✅ Included {chunks_included}/{len(chunks)} chunks "
+                f"({total_chars:,} chars, ~{total_chars//4:,} tokens)")
+    return '\n\n'.join(content_parts)
+
+
 def query_knowledge_base(grant_data: Dict[str, Any], selected_doc_ids: List[str], agency: str, user_id: str, kb_id: str) -> Dict[str, Any]:
     """
     Query Knowledge Base for relevant context with semantic filtering.
@@ -1118,7 +1284,18 @@ def query_knowledge_base(grant_data: Dict[str, Any], selected_doc_ids: List[str]
     # Step 1: Determine which documents to search
     if mode == "MANUAL":
         logger.info(f"[Proposal Agent] 🎯 MANUAL MODE: Using {len(selected_doc_ids)} user-selected documents")
-        document_ids = selected_doc_ids
+        # The frontend sends selected documents as objects: {"id": "<docId>", "type": "content"|"guideline"}.
+        # Normalize to plain document-id strings so the S3 source-URI prefixes are built correctly.
+        # (Also tolerate plain-string ids for backward compatibility.)
+        document_ids = []
+        for item in selected_doc_ids:
+            if isinstance(item, dict):
+                doc_id = item.get('id') or item.get('documentId')
+            else:
+                doc_id = item
+            if doc_id:
+                document_ids.append(doc_id)
+        logger.info(f"[Proposal Agent]    Normalized to {len(document_ids)} document id(s): {document_ids}")
     else:
         logger.info(f"[Proposal Agent] 🤖 AUTOMATIC MODE: Finding all {agency} content documents")
         
@@ -1168,10 +1345,23 @@ def query_knowledge_base(grant_data: Dict[str, Any], selected_doc_ids: List[str]
         logger.info(f"[Proposal Agent] ℹ️ No documents to process")
         return kb_context
     
-    # Step 2: Use semantic search to get relevant chunks
-    # OpenSearch will find chunks that semantically match the grant title/description
+    # Build per-document source-URI prefixes so retrieval is scoped to exactly the
+    # documents selected (manual) or matched for the agency (automatic). The KB
+    # ingests objects under s3://<bucket>/user-<userId>/<documentId>/..., and Bedrock
+    # exposes that path via the built-in 'x-amz-bedrock-kb-source-uri' key. A prefix
+    # match captures both the original file and its extracted-text sibling (PDFs).
+    doc_uri_prefixes = None
+    if document_bucket and user_id:
+        doc_uri_prefixes = [
+            f"s3://{document_bucket}/user-{user_id}/{doc_id}/" for doc_id in document_ids if doc_id
+        ]
+        logger.info(f"[Proposal Agent] 🔒 {mode} mode: scoping retrieval to {len(doc_uri_prefixes)} document(s)")
+    else:
+        logger.warning(f"[Proposal Agent] ⚠️ Missing bucket/user; retrieval will NOT be document-scoped")
+    
+    # Step 2: Use semantic search to get relevant chunks (scoped to the documents above)
     max_results = 30 if mode == "AUTOMATIC" else 20  # More chunks for automatic mode
-    chunks = retrieve_relevant_chunks(grant_data, kb_id, max_results, agency)
+    chunks = retrieve_relevant_chunks(grant_data, kb_id, max_results, agency, doc_uri_prefixes)
     
     if not chunks:
         error_msg = (
@@ -1202,45 +1392,29 @@ def query_knowledge_base(grant_data: Dict[str, Any], selected_doc_ids: List[str]
     kb_context['contentQuality'] = quality_assessment
     
     # Step 3: Apply content budget (120K chars = ~30K tokens)
-    # Sort chunks by relevance score (highest first)
-    sorted_chunks = sorted(chunks, key=lambda x: x.get('score', 0), reverse=True)
-    
-    max_chars = 120000  # ~30K tokens total budget
-    content_parts = []
-    total_chars = 0
-    chunks_included = 0
-    
-    for chunk in sorted_chunks:
-        chunk_content = chunk.get('content', {}).get('text', '')
-        chunk_chars = len(chunk_content)
-        
-        # Check if adding this chunk would exceed budget
-        if total_chars + chunk_chars > max_chars:
-            # Try to include partial chunk if we have room
-            remaining = max_chars - total_chars
-            if remaining > 500:  # Only include if we have meaningful space
-                chunk_content = chunk_content[:remaining] + "..."
-                chunk_chars = len(chunk_content)
-            else:
-                break  # Budget exhausted
-        
-        content_parts.append(chunk_content)
-        total_chars += chunk_chars
-        chunks_included += 1
-    
-    logger.info(f"[Proposal Agent] ✅ Included {chunks_included}/{len(chunks)} chunks ({total_chars:,} chars, ~{total_chars//4:,} tokens)")
-    
-    # Step 4: Format as single document with all relevant content
     # OpenSearch already found the most semantically relevant chunks - trust it!
-    combined_content = '\n\n'.join(content_parts)
-    
+    combined_content = apply_content_budget(chunks, max_chars=120000)
+    chunks_included = len(combined_content.split('\n\n')) if combined_content else 0
+
     kb_context['user_documents'].append({
         'filename': f'Relevant Content ({chunks_included} chunks)',
         'content': combined_content,
         'type': 'content',
         'chunks_count': chunks_included
     })
-    
+
+    # Stash the retrieval parameters + this grant-level content so STEP 4 can run
+    # section-aware retrieval (per-section queries) and fall back to this grant-level
+    # content for any section that returns no chunks. These underscore keys are internal
+    # and are not persisted anywhere.
+    kb_context['_retrieval'] = {
+        'kb_id': kb_id,
+        'doc_uri_prefixes': doc_uri_prefixes,
+        'max_results': max_results,
+        'mode': mode,
+        'base_content': combined_content,
+    }
+
     logger.info(f"[Proposal Agent] ✅ Formatted {len(kb_context['user_documents'])} documents with relevant content")
     
     # Log token estimation
@@ -1297,6 +1471,14 @@ def get_bedrock_prompts(agency: str) -> Dict[str, Dict[str, Any]]:
                         prompts[section_name] = {
                             'id': prompt_id,
                             'name': prompt_name,
+                            # Prompt description explains the SECTION'S INTENT (e.g. what
+                            # "Broader Impacts" means for this agency). Captured so
+                            # per-section retrieval can build a section-aware search
+                            # query instead of a generic grant-only query.
+                            'description': (
+                                response.get('description', '')
+                                or prompt_summary.get('description', '')
+                            ),
                             'template': text_config.get('text', ''),
                             'variables': text_config.get('inputVariables', [])
                         }
@@ -1312,7 +1494,7 @@ def get_bedrock_prompts(agency: str) -> Dict[str, Dict[str, Any]]:
     
     # If no prompts found, fail clearly — do not silently generate a useless one-page abstract
     if not prompts:
-        supported = "NSF, NIH, DOD, DOE, NASA, European-Commission"
+        supported = "NSF, NIH, DOD, DOE, NASA, DOT, European-Commission"
         raise RuntimeError(
             f"No proposal prompts found for agency '{agency}'. "
             f"Supported agencies: {supported}. "
@@ -1341,29 +1523,8 @@ Write a clear, concise abstract that:
 
 Keep it under 250 words."""
 
-def prepare_prompts(prompts: Dict[str, Dict], grant_data: Dict, kb_context: Dict, agency: str) -> Dict[str, str]:
-    """Substitute variables in prompt templates with actual content.
-
-    Uses Version B preamble architecture: inject RESEARCHER CONTENT and GRANT INFORMATION
-    once as labelled blocks at the top, then replace all {{content}} / {{grant_info}}
-    references in the instruction body with their label names.
-
-    This prevents the token explosion caused by injecting large content blocks at every
-    occurrence of {{content}} (which can appear 10-44 times per template).
-    Result: content is injected exactly once regardless of template reference count,
-    and transformer attention is not diluted by repeated identical blocks.
-    """
-    logger.info(f"[Proposal Agent] Preparing prompts with grant data (preamble architecture)")
-
-    # Model limits — conservative to handle EU/academic dense tokenization
-    MAX_INPUT_TOKENS = 190000
-    MAX_OUTPUT_TOKENS = 32000
-    SAFETY_BUFFER = 5000
-    CHARS_PER_TOKEN = 3  # conservative: EU text tokenizes denser than 4 chars/token
-
-    prepared = {}
-
-    # Build grant_info string
+def _build_grant_info_block(grant_data: Dict, agency: str) -> str:
+    """Build the GRANT INFORMATION preamble block (same for every section)."""
     grant_info_parts = [
         f"Grant Title: {grant_data.get('title', 'Untitled')}",
         f"Agency: {agency}",
@@ -1373,75 +1534,248 @@ def prepare_prompts(prompts: Dict[str, Dict], grant_data: Dict, kb_context: Dict
     ]
     if grant_data.get('eligibility'):
         grant_info_parts.append(f"\nEligibility:\n{grant_data.get('eligibility')}")
-    grant_info = '\n'.join(grant_info_parts)
+    return '\n'.join(grant_info_parts)
 
-    # Build full user documents string (untruncated — budget applied below)
+
+def build_section_prompt(section: str, prompt_data: Dict, grant_data: Dict, researcher_content: str, agency: str) -> str:
+    """Build the final prompt for ONE section using the given researcher content.
+
+    Uses Version B preamble architecture: inject RESEARCHER CONTENT and GRANT INFORMATION
+    once as labelled blocks at the top, then replace all {{content}} / {{grant_info}}
+    references in the instruction body with their label names.
+
+    This prevents the token explosion caused by injecting large content blocks at every
+    occurrence of {{content}} (which can appear 10-44 times per template): content is
+    injected exactly once regardless of template reference count.
+
+    `researcher_content` is passed in per section, so callers can inject section-aware
+    retrieved content (Task 8) rather than the same block for every section.
+    """
+    # Model limits — conservative to handle EU/academic dense tokenization
+    MAX_INPUT_TOKENS = 190000
+    MAX_OUTPUT_TOKENS = 32000
+    SAFETY_BUFFER = 5000
+    CHARS_PER_TOKEN = 3  # conservative: EU text tokenizes denser than 4 chars/token
+
+    grant_info = _build_grant_info_block(grant_data, agency)
+    template = prompt_data['template']
+
+    # Step 1: Replace {{content}}/{{grant_info}} in the instruction body with label names
+    instruction_body = template.replace('{{content}}', 'RESEARCHER CONTENT')
+    instruction_body = instruction_body.replace('{{grant_info}}', 'GRANT INFORMATION')
+    instruction_body = instruction_body.replace('{{grant_title}}', grant_data.get('title', 'Untitled'))
+    instruction_body = instruction_body.replace('{{grant_description}}', grant_data.get('description', ''))
+    instruction_body = instruction_body.replace('{{agency}}', agency)
+
+    # Step 2: Calculate token budget for the preamble content
+    instruction_chars = len(instruction_body)
+    grant_info_chars = len(grant_info)
+    preamble_overhead_chars = 200  # labels + separators
+    instruction_tokens = (instruction_chars + grant_info_chars + preamble_overhead_chars) // CHARS_PER_TOKEN
+    available_tokens = MAX_INPUT_TOKENS - SAFETY_BUFFER - MAX_OUTPUT_TOKENS - instruction_tokens
+    available_chars = available_tokens * CHARS_PER_TOKEN
+
+    logger.info(f"[Proposal Agent] Section '{section}': instruction={instruction_tokens:,} tokens, "
+                f"available for researcher content={available_tokens:,} tokens ({available_chars:,} chars)")
+
+    # Step 3: Trim researcher content to fit budget
+    if not researcher_content:
+        researcher_content = "No specific user documents provided."
+    if available_chars <= 0:
+        logger.warning(f"[Proposal Agent] ⚠️  Template+grant_info alone near/over limit for '{section}' "
+                       f"({instruction_tokens:,} tokens). Using minimal content placeholder.")
+        researcher_content = "[Content omitted: prompt template exceeds token budget]"
+    elif len(researcher_content) > available_chars:
+        logger.warning(f"[Proposal Agent] ✂️  Trimming researcher content from {len(researcher_content):,} "
+                       f"to {available_chars:,} chars for section '{section}'")
+        researcher_content = researcher_content[:available_chars] + "\n...[content trimmed to fit token limit]"
+
+    # Step 4: Build final prompt — preamble first, then instructions
+    preamble = (
+        f"RESEARCHER CONTENT (your primary source — refer to this throughout):\n"
+        f"---\n"
+        f"{researcher_content}\n"
+        f"---\n\n"
+        f"GRANT INFORMATION:\n"
+        f"---\n"
+        f"{grant_info}\n"
+        f"---\n\n"
+    )
+    final_prompt = preamble + instruction_body
+    final_tokens = len(final_prompt) // CHARS_PER_TOKEN
+    logger.info(f"[Proposal Agent] ✅ Prepared prompt for '{section}': ~{final_tokens:,} tokens total "
+                f"(content injected once, {template.count('{{content}}')}x {{content}} refs replaced with label)")
+    return final_prompt
+
+
+def _kb_context_to_content(kb_context: Dict) -> str:
+    """Flatten kb_context['user_documents'] into a single researcher-content string."""
     if kb_context.get('user_documents'):
-        logger.info(f"[Proposal Agent] Including {len(kb_context['user_documents'])} user documents")
         user_docs_parts = []
         for i, doc in enumerate(kb_context['user_documents']):
             user_docs_parts.append(
                 f"Document {i+1}: {doc['filename']}\n"
                 f"Content:\n{doc['content']}\n"
             )
-        full_user_documents = '\n\n'.join(user_docs_parts)
-    else:
-        full_user_documents = "No specific user documents provided."
+        return '\n\n'.join(user_docs_parts)
+    return "No specific user documents provided."
 
+
+def prepare_prompts(prompts: Dict[str, Dict], grant_data: Dict, kb_context: Dict, agency: str) -> Dict[str, str]:
+    """Substitute variables in prompt templates with the shared (grant-level) content.
+
+    Retained for callers that want the non-section-aware behavior (same researcher
+    content for every section). The per-section-aware path in `invoke()` calls
+    `build_section_prompt` directly with section-specific content instead.
+    """
+    logger.info(f"[Proposal Agent] Preparing prompts with grant data (preamble architecture)")
+    full_user_documents = _kb_context_to_content(kb_context)
+    prepared = {}
     for section, prompt_data in prompts.items():
-        template = prompt_data['template']
-
-        # Step 1: Replace all {{content}} and {{grant_info}} in the instruction body
-        # with their label names (no actual content injected here)
-        instruction_body = template.replace('{{content}}', 'RESEARCHER CONTENT')
-        instruction_body = instruction_body.replace('{{grant_info}}', 'GRANT INFORMATION')
-        # Also handle any other simple substitutions
-        instruction_body = instruction_body.replace('{{grant_title}}', grant_data.get('title', 'Untitled'))
-        instruction_body = instruction_body.replace('{{grant_description}}', grant_data.get('description', ''))
-        instruction_body = instruction_body.replace('{{agency}}', agency)
-
-        # Step 2: Calculate token budget for the preamble content
-        instruction_chars = len(instruction_body)
-        grant_info_chars = len(grant_info)
-        preamble_overhead_chars = 200  # labels + separators
-        instruction_tokens = (instruction_chars + grant_info_chars + preamble_overhead_chars) // CHARS_PER_TOKEN
-        available_tokens = MAX_INPUT_TOKENS - SAFETY_BUFFER - MAX_OUTPUT_TOKENS - instruction_tokens
-        available_chars = available_tokens * CHARS_PER_TOKEN
-
-        logger.info(f"[Proposal Agent] Section '{section}': instruction={instruction_tokens:,} tokens, "
-                    f"available for researcher content={available_tokens:,} tokens ({available_chars:,} chars)")
-
-        # Step 3: Trim researcher content to fit budget
-        if available_chars <= 0:
-            logger.warning(f"[Proposal Agent] ⚠️  Template+grant_info alone near/over limit for '{section}' "
-                           f"({instruction_tokens:,} tokens). Using minimal content placeholder.")
-            researcher_content = "[Content omitted: prompt template exceeds token budget]"
-        elif len(full_user_documents) > available_chars:
-            logger.warning(f"[Proposal Agent] ✂️  Trimming researcher content from {len(full_user_documents):,} "
-                           f"to {available_chars:,} chars for section '{section}'")
-            researcher_content = full_user_documents[:available_chars] + "\n...[content trimmed to fit token limit]"
-        else:
-            researcher_content = full_user_documents
-
-        # Step 4: Build final prompt — preamble first, then instructions
-        preamble = (
-            f"RESEARCHER CONTENT (your primary source — refer to this throughout):\n"
-            f"---\n"
-            f"{researcher_content}\n"
-            f"---\n\n"
-            f"GRANT INFORMATION:\n"
-            f"---\n"
-            f"{grant_info}\n"
-            f"---\n\n"
-        )
-        final_prompt = preamble + instruction_body
-
-        prepared[section] = final_prompt
-        final_tokens = len(final_prompt) // CHARS_PER_TOKEN
-        logger.info(f"[Proposal Agent] ✅ Prepared prompt for '{section}': ~{final_tokens:,} tokens total "
-                    f"(content injected once, {template.count('{{content}}')}x {{content}} refs replaced with label)")
-
+        prepared[section] = build_section_prompt(section, prompt_data, grant_data, full_user_documents, agency)
     return prepared
+
+
+def build_section_intent(section: str, prompt_data: Dict) -> str:
+    """Build the section-intent text used to make retrieval section-aware.
+
+    Combines the human-readable section name with the agency prompt's description
+    (what that section should cover). Falls back to just the section name if the
+    prompt has no description.
+    """
+    readable_section = section.replace('_', ' ').replace('-', ' ').strip()
+    description = (prompt_data.get('description') or '').strip()
+    parts = [readable_section]
+    if description:
+        parts.append(description)
+    return ' — '.join(parts)
+
+def _apply_guardrail_grounding(source_text: str, query_text: str, response_text: str) -> Dict[str, float]:
+    """Single ApplyGuardrail call. Returns {'groundingScore':.., 'relevanceScore':..}
+    or {} on any failure (fails open — see score_section_grounding docstring).
+    """
+    try:
+        # NOTE: hardcoded 'DRAFT', deliberately NOT env-var GUARDRAIL_VERSION.
+        # The numbered guardrail version (env var, used elsewhere for the
+        # prompt-injection pre-screen) was snapshotted before contextual
+        # grounding was added to the guardrail, and CloudFormation cannot
+        # cleanly repoint/replace that cross-stack version reference (3
+        # deploy failures tried — see backend.ts comment on guardrailVersion
+        # for the full story). DRAFT always reflects the guardrail's current
+        # live config, confirmed via `aws bedrock get-guardrail
+        # --guardrail-version DRAFT` to already include the grounding filters
+        # — no CloudFormation resource/export needed for this at all.
+        response = bedrock_runtime.apply_guardrail(
+            guardrailIdentifier=GUARDRAIL_ID,
+            guardrailVersion='DRAFT',
+            source='OUTPUT',
+            content=[
+                {'text': {'text': source_text, 'qualifiers': ['grounding_source']}},
+                {'text': {'text': query_text, 'qualifiers': ['query']}},
+                {'text': {'text': response_text}},
+            ],
+        )
+        scores: Dict[str, float] = {}
+        for assessment in response.get('assessments', []):
+            grounding_policy = assessment.get('contextualGroundingPolicy', {})
+            for f in grounding_policy.get('filters', []):
+                if f.get('type') == 'GROUNDING':
+                    scores['groundingScore'] = f.get('score')
+                elif f.get('type') == 'RELEVANCE':
+                    scores['relevanceScore'] = f.get('score')
+        return scores
+    except Exception as e:
+        logger.warning(f"[Proposal Agent] ⚠️ ApplyGuardrail chunk call failed (non-blocking): {e}")
+        return {}
+
+
+def score_section_grounding(section_name: str, section_intent: str, researcher_content: str, generated_text: str) -> Dict[str, Any]:
+    """Score a generated section's contextual grounding against the researcher
+    content actually used for that section, via Bedrock Guardrails ApplyGuardrail.
+
+    This does NOT block or alter generation — the guardrail's contextual
+    grounding filters are configured with action=NONE (see backend.ts), so
+    this call can only ever report a score, never intervene. Sections like
+    Implementation legitimately contain illustrative (ungrounded) budget/
+    timeline content by design, so blocking on low grounding would be wrong.
+    The score is surfaced to the user so they know how much of a section is
+    backed by their documents vs. generic/illustrative proposal boilerplate.
+
+    Bedrock's contextual grounding filter requires THREE qualified content
+    blocks in the same ApplyGuardrail call: grounding_source (the reference
+    material), query (what was asked), and the actual model output (no
+    qualifier). Omitting any one of them fails with ValidationException
+    ("Grounding source, query and content to guard are required") — confirmed
+    directly against the live API. `section_intent` (the section-aware search
+    query already built for retrieval) doubles as the "query" here since it's
+    exactly "what this section is trying to address."
+
+    CHUNKED, WHOLE-SECTION SCORING (not just the opening):
+    Bedrock's contextual grounding policy enforces hard character limits per
+    content block: grounding_source <= 100,000 chars, query <= 1,000 chars,
+    response (the generated text) <= 5,000 chars. Confirmed directly against
+    the live API (ValidationException: "response length is too long...
+    maximum allowed response length is 5 text units") — proposal sections run
+    ~2,000-2,500 words (~12-15K chars), far over that response limit.
+    Scoring only the first ~4,500 chars would be MISLEADING, not just
+    incomplete: our section prompts are structurally front-loaded with
+    grounded content (e.g. Implementation opens with Technical Approach, drawn
+    from the researcher's documents) and back-loaded with unsourced
+    boilerplate (budget/timeline/personnel, explicitly NOT meant to come from
+    the documents — see the "[Not sourced from your documents]" attribution
+    requirement in the prompts). Truncating to the opening would systematically
+    sample the most-grounded part and skip the intentionally-unsourced part,
+    inflating the score in exactly the direction that hides the thing a user
+    should double-check.
+    Instead, we split the section into ~4,000-char chunks, run ApplyGuardrail
+    once per chunk (same grounding_source/query every time — only the
+    response chunk changes), and return a length-weighted average across all
+    chunks. This covers the entire section rather than a biased sample, at the
+    cost of a few extra ApplyGuardrail calls per section (~200-300ms each,
+    negligible next to the multi-second Claude generation call).
+    """
+    if not GUARDRAIL_ID:
+        return {}
+
+    MAX_GROUNDING_SOURCE_CHARS = 90000
+    MAX_QUERY_CHARS = 900
+    CHUNK_CHARS = 4000  # comfortably under the 5,000-char per-call response limit
+
+    source_text = (researcher_content or "")[:MAX_GROUNDING_SOURCE_CHARS]
+    if not source_text.strip():
+        logger.info(f"[Proposal Agent] ℹ️ No researcher content to ground '{section_name}' against; skipping grounding score")
+        return {}
+    query_text = (section_intent or section_name or "")[:MAX_QUERY_CHARS]
+
+    text = generated_text or ""
+    chunks = [text[i:i + CHUNK_CHARS] for i in range(0, len(text), CHUNK_CHARS)] or [""]
+
+    weighted_sums: Dict[str, float] = {}
+    total_weight = 0
+    chunks_scored = 0
+
+    for chunk in chunks:
+        chunk_len = len(chunk)
+        if chunk_len == 0:
+            continue
+        chunk_scores = _apply_guardrail_grounding(source_text, query_text, chunk)
+        if not chunk_scores:
+            continue  # this chunk's call failed; skip it rather than skew the average with a 0
+        for key, value in chunk_scores.items():
+            if isinstance(value, (int, float)):
+                weighted_sums[key] = weighted_sums.get(key, 0.0) + value * chunk_len
+        total_weight += chunk_len
+        chunks_scored += 1
+
+    if total_weight == 0:
+        logger.warning(f"[Proposal Agent] ⚠️ Grounding check failed for '{section_name}' — no chunks scored (non-blocking)")
+        return {}
+
+    scores = {key: total / total_weight for key, total in weighted_sums.items()}
+    logger.info(f"[Proposal Agent] 📊 Grounding score for '{section_name}' "
+                f"({chunks_scored}/{len(chunks)} chunks scored): {scores}")
+    return scores
+
 
 def generate_section_with_claude(prompt: str, section_name: str, max_retries: int = 3) -> str:
     """Call Bedrock Claude with STREAMING to generate one section.
@@ -1466,7 +1800,7 @@ def generate_section_with_claude(prompt: str, section_name: str, max_retries: in
                 body=json.dumps({
                     'anthropic_version': 'bedrock-2023-05-31',
                     'max_tokens': 32000,
-                    'temperature': 0.3,
+                    'temperature': PROPOSAL_TEMPERATURE,
                     'messages': [
                         {
                             'role': 'user',

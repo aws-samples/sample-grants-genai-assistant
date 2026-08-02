@@ -120,7 +120,9 @@ This walkthrough verifies the full pipeline — knowledge base upload, grant sea
 
 1. In the left nav, click **Knowledge Base**
 2. Click the **Upload Documents** tab
-3. Upload the file `install_docs/test_files/TTP-GrantObjectives.txt` from this repo
+3. Upload one of the sample files from `install_docs/test_files/` (e.g.
+   `TTP-Research-Program-and-Methodology.txt`, which covers thermal transport research
+   relevant to the NSF Thermal Transport Processes program)
    - Set Agency to `NSF`
    - Set Type to `Research Document`
 4. Click **Upload** and wait for the status to show **Ready**
@@ -137,7 +139,7 @@ This walkthrough verifies the full pipeline — knowledge base upload, grant sea
 
 1. From the grant detail view, click **Generate Proposal**
 2. When prompted to select documents, choose **Manual** selection
-3. Click **Select** next to the `TTP-GrantObjectives.txt` document you uploaded
+3. Click **Select** next to the document you uploaded
 4. Click **Continue** to queue the proposal — you can close the popup after this
 
 **View the result**
@@ -178,7 +180,7 @@ This walkthrough verifies the full pipeline — knowledge base upload, grant sea
   - Markdown guides for agent discovery, knowledge base, proposal generation, and evaluation metrics
   - Indexed help content accessible from the chat interface
 
-- `docs/` - Project documentation
+- `install_docs/` - Deployment guides, troubleshooting references, and sample test files (`install_docs/test_files/`)
 
 - `installation/` - Deployment and setup scripts
   - `deploy-grow2-bootstrap.sh` - Automated full-stack deployment script
@@ -316,7 +318,7 @@ Once your GROW2 stack is running, use these guides for ongoing operations:
 
 ### Bedrock Prompts
 
-GROW2 uses 18 Amazon Bedrock managed prompts to generate proposal sections, organized by funding agency. These prompts are a best-effort starting point developed by the GROW2 team to generate standard sections for each agency's proposal format. They are intended to be reviewed and updated by the researcher to reflect their specific work, institutional context, and the latest program requirements.
+GROW2 uses 21 Amazon Bedrock managed prompts to generate proposal sections, organized by funding agency. These prompts are a best-effort starting point developed by the GROW2 team to generate standard sections for each agency's proposal format. They are intended to be reviewed and updated by the researcher to reflect their specific work, institutional context, and the latest program requirements.
 
 | Agency | Prompts | Scope |
 |--------|---------|-------|
@@ -326,6 +328,7 @@ GROW2 uses 18 Amazon Bedrock managed prompts to generate proposal sections, orga
 | European Commission | Excellence, Impact, Implementation | Horizon Europe / MSCA |
 | DOE | Scientific Objectives, Technical Approach, Impact & Outcomes | Office of Science basic research (BES, BER, HEP, NP, FES, ASCR) |
 | NASA | Scientific/Technical Plan, NASA Relevance, Work Plan | ROSES / NOFO research grants |
+| DOT | Merit Criteria, Project Narrative, Project Readiness | BUILD / RAISE / INFRA / SS4A and similar DOT discretionary grants |
 
 > **Note on DOE prompts:** These cover DOE Office of Science basic research grants only. DOE also funds applied/demonstration projects through OCED (Office of Clean Energy Demonstrations) which has a different proposal structure. Researchers applying to OCED NOFOs should add custom prompts — see [Adding Custom Prompts](install_docs/reference/ADDING_PROMPTS.md).
 
@@ -338,6 +341,145 @@ To customize a prompt, edit the corresponding JSON file in `config/bedrock-promp
 ```
 
 CDK will diff and update only the changed prompts. The seeder is skipped on updates (idempotency check).
+
+### How Proposal Generation Works (Plain English)
+
+This explains, in plain language, what happens when you click **Generate Proposal** —
+especially how your Knowledge Base documents are used and why the token counts look the
+way they do.
+
+**The short version:** you don't send whole documents to the AI. The system **searches
+your selected documents for the most relevant passages**, keeps only a budgeted amount
+of that text, and uses it to write each section of the proposal. Selecting more (or
+bigger) documents does **not** stuff more text into the model — it just gives the search
+more to choose from.
+
+#### Step by step (per proposal)
+
+1. **Pick the agency's prompts.** Each agency has a fixed set of section prompts. For
+   **NSF** there are three: *Intellectual Merit*, *Broader Impacts*, and
+   *Implementation*. The system uses **all** of an agency's prompts — one per section.
+
+2. **Retrieve, don't "load."** The system runs a **semantic search** (meaning-based, not
+   keyword) against your documents in the vector store and pulls back the most relevant
+   **chunks**:
+   - Up to **20 chunks** in manual mode (you picked the documents) or **30** in
+     automatic mode (the agent uses your agency-tagged documents).
+   - Each chunk is at most **512 tokens** (~2,000 characters).
+   - **Only the documents you selected are searched.** Retrieval is scoped to your
+     chosen documents, so a proposal is genuinely built from the documents you picked —
+     not your whole library.
+   - **Each section gets its own search.** Rather than doing one generic search and
+     reusing the same passages everywhere, the system runs a **separate, section-tuned
+     search for every section** (see step 4). A "Broader Impacts" section searches for
+     things like societal benefit, education, and outreach; an "Intellectual Merit"
+     section searches for significance, innovation, and advances in knowledge. So each
+     section is written from the excerpts that actually matter to *that* section.
+
+3. **Apply a content budget.** The retrieved chunks are sorted by relevance and capped at
+   **120,000 characters (≈ 30,000 tokens)**. Anything beyond that is dropped. This
+   capped block is the entire "researcher content" the model sees — regardless of how
+   many documents you selected or how large they are.
+
+4. **Write each section (independent calls).** For each section prompt, the system:
+   - **Runs a section-tuned search first.** It builds a search query by combining the
+     grant details with *that section's intent* — taken from the section name plus the
+     agency prompt's own description of what the section should cover. The most relevant
+     excerpts for that section become its researcher content. (If a section's search
+     happens to come back empty, it falls back to the grant-level results so a section is
+     never left with nothing.)
+   - Injects that section's researcher content **once** (even if the template refers to it
+     many times), plus the grant details.
+   - Computes how much room is left for that section:
+     `available = 190,000 − 5,000 safety buffer − 32,000 reserved for the answer −
+     the size of the instructions`, and **trims** the content to fit if needed.
+   - Makes a **separate** call to Claude for that section. Sections are **not** chained —
+     one section's output is not fed into the next; each is generated on its own from the
+     same researcher content.
+
+5. **Assemble, convert, evaluate.** The generated sections are combined into one HTML
+   proposal, converted to PDF, and scored by a separate evaluator agent (quality,
+   guideline adherence, completeness, source use).
+
+#### Contextual grounding score (the "Grounded: X%" badge)
+
+After each section is written, the system asks a separate safety/quality check (Amazon
+Bedrock Guardrails) to score how much of that section's text is actually backed by the
+researcher content used for it, versus generic or unsourced content. This score is
+**informational only** — it never blocks, edits, or regenerates anything. You'll see it
+as a "Grounded: X%" badge on the Proposals page, with a per-section breakdown in the
+tooltip.
+
+**How the whole section gets scored, not just the start.** The underlying grounding
+check has a hard limit on how much text it can evaluate in one call (about 5,000
+characters), but sections typically run ~12,000-15,000 characters. Rather than scoring
+only the first chunk (which would be misleading — our sections are structurally
+front-loaded with grounded content and back-load the intentionally unsourced
+budget/timeline content), the system splits the section into ~4,000-character chunks,
+scores each one separately, and reports a length-weighted average across the whole
+section. So the badge reflects the entire section's grounding, not just its opening.
+
+Sections like Implementation are *expected* to score lower on grounding — their
+budget, timeline, and personnel figures are often not drawn from your documents by
+design (see "Attribution marker" below) and are not meant to be presented as fact.
+
+#### Attribution marker: `[Not sourced from your documents]`
+
+Every generation prompt (all 21 agency/section combinations) includes a single
+attribution requirement: the model must use your uploaded content as its primary
+source, and whenever a sentence, figure, name, or claim comes from somewhere other
+than your documents or the grant description — general domain knowledge, a
+typical/illustrative figure, or common practice in the field — it must tag that
+sentence or list item inline with `[Not sourced from your documents]`. Section headers
+and purely structural language are not tagged.
+
+#### Why the token counter can look "high" with only a couple of documents
+
+The document selector estimates tokens from the **extracted text length** of each
+document (for a PDF, that's the text pulled out of it — not the raw file size). Two dense
+technical documents can easily total 100K+ tokens of source text.
+
+But that number is **the size of your source material, not the amount sent to the model.**
+Because of the content budget above, the proposal only ever uses up to ~**30,000 tokens**
+of the most relevant excerpts. So:
+
+- Selecting more/larger documents gives the search a richer pool to draw from.
+- It does **not** proportionally increase what the model receives.
+- You will not "run out" of model capacity by selecting a few large documents — the
+  system always trims to fit.
+
+#### Key numbers at a glance
+
+| Thing | Value |
+|-------|-------|
+| Chunk size | ≤ 512 tokens (~2,000 chars) |
+| Chunks retrieved | 20 (manual) / 30 (automatic) |
+| Content budget actually used | 120,000 chars ≈ 30,000 tokens |
+| Per-section input ceiling | ~190,000 tokens (buffer + answer reserve deducted) |
+| Reserved for the generated answer | 32,000 tokens |
+| NSF sections (separate calls) | 3 |
+
+#### Evaluation scoring
+
+After a proposal is generated, a separate evaluator agent scores it against four
+weighted metrics, shown as grade cards (A–F) on the Proposals page:
+
+| Metric | Weight | What it measures |
+|--------|--------|-------------------|
+| Guideline Adherence | 40% | Whether the proposal addresses all the success criteria and required sections from the grant guidelines (AI-analyzed) |
+| Content Quality | 30% | How well the Knowledge Base semantic search matched your documents to the grant's description and title (not the writing itself) |
+| Completeness | 20% | Whether all expected major sections are present with adequate detail (5+ sections, 3,000+ words) |
+| Source Utilization | 10% | Whether a good variety of your uploaded documents were used, and whether those documents were strong matches |
+
+**Contextual Grounding** is shown as a fifth card but is **informational only** — it is
+not weighted into the overall grade, since low grounding is expected and by design for
+sections like Implementation (budget/timeline figures).
+
+#### Notes / current limitations
+
+- The document selector's token figure is a **source-material size estimate**, not a
+  prediction of tokens sent to the model. Treat it as "how much material you've provided,"
+  not "how close you are to a limit."
 
 ### Refreshing the EU Grants Cache
 
@@ -352,6 +494,44 @@ To trigger a refresh on-demand (e.g. you want the latest data right now):
 5. Click **Test** — the function will download the latest EU grants file and store it in S3
 
 The Lambda has a 15-minute timeout and 3GB memory — a fresh download typically completes in 2-3 minutes. Check CloudWatch Logs for the function if you want to confirm success or diagnose errors.
+
+---
+
+### Changing the Claude Model
+
+The system uses Anthropic Claude models on Amazon Bedrock via cross-region **inference
+profiles** (`us.*` / `eu.*`). Three places reference a model, and each is changed by
+editing a model ID string — **no IAM changes are needed** because the Bedrock invoke
+permissions are scoped to the whole Claude family (`anthropic.claude-*`).
+
+| Component | Where the model ID is set | Notes |
+|-----------|---------------------------|-------|
+| Proposal generation agent | `amplify/functions/proposal-generation-agentcore/resource.ts` sets `PROPOSAL_MODEL_TIER` env (`opus` or `sonnet`); `bc/proposal-generation-agent/agent.py` maps the tier → model ID | Easiest lever: flip the tier, or edit the model ID mapping in `agent.py` |
+| Chat assistant | `amplify/functions/chat-handler/handler.py` → `CLAUDE_MODEL_ID` | Region-prefixed inference profile ID |
+| Prompt testing | Per-prompt `modelId` in the Bedrock prompt variant (`config/bedrock-prompts/`) | Optional |
+
+**To switch models** (e.g. Sonnet 4.5 → Opus 4.7 or Sonnet 5):
+
+1. Confirm the target model's **inference profile** is available in your deploy region
+   (Bedrock console → Cross-region inference), and note its exact model ID. IDs are not
+   perfectly predictable across generations (dated vs undated, `:0` suffix varies), so
+   copy the ID from the Bedrock console / model card rather than guessing.
+2. Update the model ID(s) in the component(s) above. For the proposal agent, prefer
+   changing `PROPOSAL_MODEL_TIER` or the tier→ID mapping in `agent.py`.
+3. Redeploy: `./installation/deploy-grow2-bootstrap.sh <region>` (and manually trigger
+   the `grow2-seeder-{account}-{region}` project only if you also changed the React UI).
+
+**API compatibility:** all invocations use the Bedrock **Messages API**
+(`anthropic_version: bedrock-2023-05-31`, `messages`, `max_tokens`, `temperature`),
+which is stable across Claude 3 → 5. Switching model generations does **not** require
+request/response changes. Watch for: (a) per-model `max_tokens` ceilings, (b) new
+optional features (e.g. extended thinking) are opt-in, and (c) cost/latency and output
+characteristics differ by model, so re-check proposal quality after switching.
+
+> IAM note: `bedrock:InvokeModel` for these components is intentionally scoped to
+> `anthropic.claude-*` (inference profiles + foundation-model routing targets) so model
+> swaps are code-only. To restrict to a specific model, narrow those ARNs in
+> `amplify/backend.ts` and `amplify/custom/agentcore-stack.ts`.
 
 ---
 

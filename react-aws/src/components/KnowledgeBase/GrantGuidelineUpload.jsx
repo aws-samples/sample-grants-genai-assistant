@@ -11,7 +11,7 @@ const SUPPORTED_FILE_TYPES = {
   'text/markdown': '.md'
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (matches backend Lambda limit and Bedrock KB per-file limit)
 
 // Grant-specific metadata options
 const US_AGENCIES = [
@@ -465,7 +465,7 @@ const GrantGuidelineUpload = ({ onUploadComplete }) => {
           {selectedFile ? selectedFile.name : 'Drop your guideline document here or click to browse'}
         </h3>
         <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-          Supported: PDF, DOCX, DOC, TXT, MD (Max 10MB)
+          Supported: PDF, DOCX, DOC, TXT, MD (Max 50MB)
         </p>
         <input
           id="grantFileInput"

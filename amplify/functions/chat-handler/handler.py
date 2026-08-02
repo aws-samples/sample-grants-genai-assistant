@@ -409,6 +409,7 @@ def is_help_question(message: str) -> bool:
     # Question triggers that indicate user wants to learn about the application
     help_triggers = [
         'how do i', 'how can i', 'how to', 'how does', 'how do you',
+        'how is', 'how are',
         'explain how', 'show me how', 'what is', 'what does', 'what are',
         'what can', 'tell me about', 'explain', 'describe', 'show me',
         'list', 'available', 'help with'
@@ -420,7 +421,12 @@ def is_help_question(message: str) -> bool:
         'profile manager', 'user profile', 'profiles',
         'grant search', 'search feature', 'search grants',
         'agent selected grants', 'selected grants', 'discovered grants',
-        'proposal generation', 'proposals',
+        'proposal generation', 'proposals', 'proposal', 'generate a proposal',
+        'generate proposal', 'create a proposal', 'download proposal',
+        'quality score', 'quality badge', 'evaluation metrics', 'guideline adherence',
+        'content quality', 'source utilization', 'grounded', 'grounding',
+        'prompt management', 'prompt', 'prompts',
+        'knowledge base', 'upload document', 'grant guidelines',
         'navigation', 'left nav', 'menu',
         'bayesian matching', 'bayesian model', 'bayesian', 'relevance scoring', 'scoring algorithm',
         'autonomous discovery', 'agent discovery',

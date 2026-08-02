@@ -29,6 +29,7 @@ print("", flush=True)
 print("[Proposal Evaluator] STEP 3: Importing boto3...", flush=True)
 try:
     import boto3
+    from botocore.config import Config
     print(f"[Proposal Evaluator] ✅ boto3 imported successfully (version: {boto3.__version__})", flush=True)
 except Exception as e:
     print(f"[Proposal Evaluator] ❌ Failed to import boto3: {e}", flush=True)
@@ -94,7 +95,21 @@ logger.info(f"[Proposal Evaluator] Using AWS region: {AWS_REGION}")
 print(f"[Proposal Evaluator] Using AWS region: {AWS_REGION}", flush=True)
 
 try:
-    bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION)
+    # Explicit read_timeout: the default botocore read_timeout is 60s, which
+    # is tight-but-usually-fine for a single non-streaming invoke_model call
+    # (each _evaluate_section_adherence() call is one such call, max_tokens
+    # 2000). Set generously above the default so an occasional slower Claude
+    # response doesn't silently fall back to the 0.70 heuristic for that
+    # section — this agent itself runs inside AgentCore Runtime's own request
+    # lifecycle (not the 8-hour async-task pattern used by the generation
+    # agent), so this doesn't need to be as large as the generation agent's
+    # A2A timeout, just comfortably larger than the 60s default.
+    bedrock_config = Config(
+        read_timeout=180,
+        connect_timeout=10,
+        retries={'max_attempts': 2}
+    )
+    bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION, config=bedrock_config)
     logger.info("[Proposal Evaluator] ✅ Bedrock Runtime client initialized")
     print("[Proposal Evaluator] ✅ Bedrock Runtime client initialized", flush=True)
 except Exception as e:
@@ -162,7 +177,7 @@ def invoke(payload: dict) -> dict:
         
         # EVALUATION STEP 3: Completeness (20%)
         logger.info(f"[Proposal Evaluator] 📊 Step 3: Evaluating completeness...")
-        completeness_score = evaluate_completeness(proposal_content)
+        completeness_score = evaluate_completeness(proposal_content, prompt)
         logger.info(f"[Proposal Evaluator] ✅ Completeness score: {completeness_score['score']:.2f}")
         
         # EVALUATION STEP 4: Source Utilization (10%)
@@ -305,31 +320,31 @@ def evaluate_content_quality(content_quality: dict) -> dict:
     }
 
 
-def evaluate_guideline_adherence(proposal_content: dict, prompt: dict, bedrock_client) -> dict:
+def _evaluate_section_adherence(section_name: str, section_text: str, section_prompt: str, bedrock_client) -> dict:
+    """Evaluate ONE section against the prompt/guidelines used to generate it.
+
+    Returns the same shape as the old whole-proposal analysis (overallScore,
+    criteria, strengths, weaknesses, recommendations, redFlags) but scoped to
+    this section only. Falls back to the 0.70 heuristic (this section's share
+    of the 40% weight) if the Claude call fails, so one bad section doesn't
+    take down the entire evaluation.
     """
-    Evaluate how well proposal follows grant guidelines (40% weight)
-    Uses Claude to analyze against success criteria
-    """
-    logger.info("[Proposal Evaluator] Analyzing guideline adherence with Claude...")
-    
-    # Extract proposal HTML and prompt content
-    html = proposal_content.get('html', '')
-    prompt_content = prompt.get('content', '')
-    success_criteria = prompt.get('successCriteria', [])
-    
-    # Build evaluation prompt for Claude
-    evaluation_prompt = f"""You are evaluating a grant proposal against specific guidelines.
+    evaluation_prompt = f"""You are evaluating ONE SECTION of a grant proposal against the guidelines
+that were used to generate that section.
 
-GRANT GUIDELINES AND SUCCESS CRITERIA:
-{prompt_content}
+SECTION BEING EVALUATED: {section_name}
 
-PROPOSAL CONTENT (HTML):
-{html[:10000]}  
+GUIDELINES AND SUCCESS CRITERIA FOR THIS SECTION:
+{section_prompt[:8000]}
 
-Analyze how well the proposal addresses each success criterion. For each criterion:
-1. Is it addressed? (yes/no)
-2. How well? (strong/moderate/weak/missing)
-3. Provide brief evidence from the proposal
+SECTION CONTENT (as written):
+{section_text[:12000]}
+
+Analyze how well THIS SECTION addresses the guidelines above. Do NOT penalize
+this section for content that belongs in OTHER sections of the proposal
+(e.g. do not flag a missing budget when evaluating a Broader Impacts section
+if budget belongs in Implementation instead) — judge it only against what
+the guidelines above ask THIS section to cover.
 
 Return your analysis as JSON with this structure:
 {{
@@ -339,70 +354,102 @@ Return your analysis as JSON with this structure:
       "criterion": "Must address innovation clearly",
       "addressed": true,
       "quality": "strong",
-      "evidence": "Section 2 provides detailed innovation approach..."
+      "evidence": "Provides detailed innovation approach..."
     }}
   ],
-  "strengths": ["Clear innovation section", "Strong methodology"],
-  "weaknesses": ["Missing budget justification"],
-  "recommendations": ["Add explicit budget section"],
-  "redFlags": ["Budget section completely missing"]
+  "strengths": ["Clear innovation section"],
+  "weaknesses": ["Missing quantitative context"],
+  "recommendations": ["Add more specific figures"],
+  "redFlags": []
 }}
 
-Be critical but fair. Focus on what's actually in the proposal."""
+Be critical but fair. Focus on what's actually in this section."""
 
     try:
-        # Call Claude via Bedrock
         response = bedrock_client.invoke_model(
             modelId='us.anthropic.claude-sonnet-4-5-20250929-v1:0',
             body=json.dumps({
                 "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 2000,
+                # FIX (2026-08-02): was 2000, too tight for sections with dense
+                # structured content (e.g. Implementation's milestone table) —
+                # observed a real failure where Claude's JSON response got cut
+                # off mid-string ("Unterminated string...") because the
+                # criteria array for that section needed more tokens than
+                # 2000 to fully close out. That truncated response fails
+                # json.loads() and falls back to the 0.70 heuristic for that
+                # section, which is safe but throws away a real Claude
+                # analysis unnecessarily. 4000 gives comfortable headroom
+                # without materially increasing latency (this is a fixed-size
+                # completion, not streaming).
+                "max_tokens": 4000,
                 "messages": [{
                     "role": "user",
                     "content": evaluation_prompt
                 }]
             })
         )
-        
+
         response_body = json.loads(response['body'].read())
         claude_response = response_body['content'][0]['text']
-        
-        # Parse Claude's JSON response
-        # Extract JSON from markdown code blocks if present
+
         if '```json' in claude_response:
             claude_response = claude_response.split('```json')[1].split('```')[0].strip()
         elif '```' in claude_response:
             claude_response = claude_response.split('```')[1].split('```')[0].strip()
-        
+
         analysis = json.loads(claude_response)
-        
-        score = analysis.get('overallScore', 0.70)
-        weight = 0.40
-        weighted_score = score * weight
-        grade = calculate_grade(score)
-        
+
         return {
-            "score": score,
-            "weight": weight,
-            "weightedScore": weighted_score,
-            "grade": grade,
-            "reasoning": f"Analyzed {len(analysis.get('criteria', []))} success criteria. {len([c for c in analysis.get('criteria', []) if c.get('addressed')])} addressed.",
+            "score": analysis.get('overallScore', 0.70),
             "criteria": analysis.get('criteria', []),
-            "strengths": analysis.get('strengths', []),
-            "weaknesses": analysis.get('weaknesses', []),
-            "recommendations": analysis.get('recommendations', []),
-            "redFlags": analysis.get('redFlags', [])
+            "strengths": [f"[{section_name}] {s}" for s in analysis.get('strengths', [])],
+            "weaknesses": [f"[{section_name}] {s}" for s in analysis.get('weaknesses', [])],
+            "recommendations": [f"[{section_name}] {s}" for s in analysis.get('recommendations', [])],
+            "redFlags": [f"[{section_name}] {s}" for s in analysis.get('redFlags', [])],
+            "usedFallback": False,
         }
-        
+
     except Exception as e:
-        logger.error(f"[Proposal Evaluator] Error calling Claude: {e}")
-        # Fallback to simple heuristic
+        logger.error(f"[Proposal Evaluator] Error calling Claude for section '{section_name}': {e}")
+        return {
+            "score": 0.70,
+            "criteria": [],
+            "strengths": [],
+            "weaknesses": [f"[{section_name}] Could not perform detailed guideline analysis"],
+            "recommendations": [f"[{section_name}] Manual review recommended"],
+            "redFlags": [],
+            "usedFallback": True,
+        }
+
+
+def evaluate_guideline_adherence(proposal_content: dict, prompt: dict, bedrock_client) -> dict:
+    """
+    Evaluate how well proposal follows grant guidelines (40% weight).
+    Uses Claude to analyze each SECTION separately against the guidelines/prompt
+    that generated it, then combines the results (word-count-weighted average).
+
+    Evaluating per-section (rather than one call against html[:10000]) matters
+    because proposals routinely exceed that character budget — a 3-section,
+    ~10K-word proposal only exposed its first section (and not even all of
+    that) to the old whole-proposal call, so sections like Implementation
+    (budget, timeline, team) were never actually evaluated. `prompt` here is
+    the per-section dict of {section_name: full_prompt_text} built during
+    generation (see build_section_prompt / prepared_prompts in the generation
+    agent) — each section's own prompt text doubles as its guidelines/success
+    criteria for this evaluation, since that's literally what asked for it.
+    """
+    logger.info("[Proposal Evaluator] Analyzing guideline adherence with Claude (per-section)...")
+
+    sections = proposal_content.get('json', {})
+    if not sections:
+        # No structured sections available — nothing to evaluate per-section.
+        logger.warning("[Proposal Evaluator] No sections found in proposalContent['json']; using fallback")
         return {
             "score": 0.70,
             "weight": 0.40,
             "weightedScore": 0.28,
             "grade": "C+",
-            "reasoning": "Unable to perform detailed analysis. Using heuristic evaluation.",
+            "reasoning": "No structured sections available for per-section analysis. Using heuristic evaluation.",
             "criteria": [],
             "strengths": [],
             "weaknesses": ["Could not perform detailed guideline analysis"],
@@ -410,8 +457,61 @@ Be critical but fair. Focus on what's actually in the proposal."""
             "redFlags": []
         }
 
+    total_words = sum(max(s.get('wordCount', 0), 1) for s in sections.values()) or 1
 
-def evaluate_completeness(proposal_content: dict) -> dict:
+    weighted_score_sum = 0.0
+    all_criteria = []
+    all_strengths = []
+    all_weaknesses = []
+    all_recommendations = []
+    all_red_flags = []
+    sections_evaluated = 0
+    sections_fallback = 0
+
+    for section_name, section_data in sections.items():
+        section_text = section_data.get('content', '') or ''
+        section_words = max(section_data.get('wordCount', 0), 1)
+        section_prompt = prompt.get(section_name, '') if isinstance(prompt, dict) else ''
+
+        result = _evaluate_section_adherence(section_name, section_text, section_prompt, bedrock_client)
+
+        weighted_score_sum += result['score'] * (section_words / total_words)
+        all_criteria.extend(result['criteria'])
+        all_strengths.extend(result['strengths'])
+        all_weaknesses.extend(result['weaknesses'])
+        all_recommendations.extend(result['recommendations'])
+        all_red_flags.extend(result['redFlags'])
+        sections_evaluated += 1
+        if result['usedFallback']:
+            sections_fallback += 1
+
+    score = weighted_score_sum
+    weight = 0.40
+    weighted_score = score * weight
+    grade = calculate_grade(score)
+
+    reasoning = (
+        f"Analyzed {sections_evaluated} section(s) individually against their own guidelines "
+        f"({len(all_criteria)} total success criteria checked)."
+    )
+    if sections_fallback:
+        reasoning += f" {sections_fallback} section(s) fell back to heuristic scoring due to analysis errors."
+
+    return {
+        "score": score,
+        "weight": weight,
+        "weightedScore": weighted_score,
+        "grade": grade,
+        "reasoning": reasoning,
+        "criteria": all_criteria,
+        "strengths": all_strengths,
+        "weaknesses": all_weaknesses,
+        "recommendations": all_recommendations,
+        "redFlags": all_red_flags
+    }
+
+
+def evaluate_completeness(proposal_content: dict, prompt: dict = None) -> dict:
     """
     Evaluate proposal completeness (20% weight)
     Check for required sections and adequate content
@@ -426,9 +526,27 @@ def evaluate_completeness(proposal_content: dict) -> dict:
     # Use metadata if available (more reliable)
     total_sections = metadata.get('sectionCount', len(sections))
     total_words = metadata.get('wordCount', sum(s.get('wordCount', 0) for s in sections.values()))
-    
+
+    # FIX (2026-08-02): section_score was previously `total_sections / 5.0`, a
+    # hardcoded expectation of 5 sections. Every agency's prompt set actually
+    # defines exactly 3 sections (see config/bedrock-prompts/), so this capped
+    # EVERY proposal's Completeness score at 0.6 for the section-count half
+    # regardless of quality — a structural ceiling, not a real signal.
+    #
+    # `prompt` is the per-section prompt dict built during generation for
+    # THIS agency (see prepared_prompts in the generation agent), so
+    # len(prompt) is exactly how many sections this agency's prompt set
+    # defines — self-correcting if an agency's prompt count changes (more or
+    # fewer sections added later) without needing another hardcoded number.
+    # Falls back to total_sections itself (i.e. full marks on section count)
+    # if prompt isn't available, rather than penalizing against an unknown
+    # expectation.
+    expected_sections = len(prompt) if prompt else total_sections
+    if expected_sections <= 0:
+        expected_sections = total_sections or 1
+
     # Simple scoring based on sections and word count
-    section_score = min(total_sections / 5.0, 1.0)  # Expect ~5 sections
+    section_score = min(total_sections / expected_sections, 1.0) if expected_sections else 1.0
     word_score = min(total_words / 3000.0, 1.0)  # Expect ~3000 words
     
     score = (section_score * 0.6 + word_score * 0.4)
@@ -441,12 +559,12 @@ def evaluate_completeness(proposal_content: dict) -> dict:
     recommendations = []
     red_flags = []
     
-    if total_sections >= 5:
-        strengths.append(f"All major sections present ({total_sections} sections)")
-    elif total_sections >= 3:
-        weaknesses.append(f"Some sections may be missing (only {total_sections} sections)")
+    if total_sections >= expected_sections:
+        strengths.append(f"All expected sections present ({total_sections}/{expected_sections} sections)")
+    elif total_sections >= max(expected_sections - 1, 1):
+        weaknesses.append(f"Some sections may be missing ({total_sections}/{expected_sections} sections)")
     else:
-        weaknesses.append(f"Proposal appears incomplete (only {total_sections} sections)")
+        weaknesses.append(f"Proposal appears incomplete (only {total_sections}/{expected_sections} sections)")
         red_flags.append("Very few sections - proposal may be incomplete")
     
     if total_words >= 3000:
@@ -458,7 +576,7 @@ def evaluate_completeness(proposal_content: dict) -> dict:
         weaknesses.append(f"Proposal is very brief ({total_words:,} words)")
         recommendations.append("Significantly expand content - proposals typically need 3000+ words")
     
-    reasoning = f"{total_sections} sections with {total_words:,} total words."
+    reasoning = f"{total_sections}/{expected_sections} expected sections with {total_words:,} total words."
     
     return {
         "score": score,

@@ -1,0 +1,56 @@
+Education, Outreach, and Dissemination Plan: Nanoscale Thermal Transport Research Program
+
+1. CONNECTION TO SOCIETAL NEED
+
+Thermal transport at the nanoscale is a limiting factor in several technologies of clear economic and societal relevance, and this research program is designed to advance the fundamental measurement science and physical understanding needed to address them.
+
+Thermal management of nanoscale electronics: As transistor feature sizes and interconnect dimensions shrink, interface thermal resistance increasingly dominates over bulk material resistance, and hot-spot formation limits achievable device performance and reliability. Measurements of thermal boundary conductance at metal-dielectric and metal-semiconductor interfaces, of the kind produced by this research program, directly inform thermal design for advanced integrated circuits and power electronics.
+
+Data storage technologies: Phase-change memory and heat-assisted magnetic recording both depend on highly localized, precisely controlled heating and thermal confinement at the nanoscale. Thermal conductance measurements at the relevant interfaces and in the relevant thin-film stacks provide design-relevant data for these storage architectures.
+
+Thermoelectric energy conversion: Thermoelectric devices convert waste heat directly into electricity, and their efficiency depends on achieving low thermal conductivity in nanostructured materials (superlattices, nanocomposites) while preserving electrical conductivity. Systematic thermal conductivity measurements of anisotropic and nanostructured materials, of the type this program produces, support rational design of these materials.
+
+2. GRADUATE EDUCATION
+
+This project will support the training of graduate students in an unusually broad combination of skills: ultrafast optics and pump-probe instrumentation, thin-film sample fabrication and characterization, and quantitative thermal modeling using analytical solutions to the heat diffusion equation. Specific technical competencies developed include:
+
+- Design, alignment, and operation of a pump-probe optical measurement system, including femtosecond/picosecond laser sources, optical delay lines, and lock-in detection.
+- Picosecond acoustics for non-destructive film thickness measurement, and application of the Wiedemann-Franz law for estimating metal-film thermal conductivity from electrical conductivity measurements.
+- Fitting multi-parameter analytical thermal models to experimental data — an inverse-problem methodology analogous to ellipsometry or x-ray reflectivity analysis.
+- Understanding of phonon transport physics, including the distinction between diffusive and quasi-ballistic regimes and the conditions under which each applies.
+
+Graduate students will present research results at conferences relevant to the thermal transport community and will be expected to prepare peer-reviewed manuscripts as lead authors over the course of their training. [Not sourced from your documents — specific conference names, presentation counts, and manuscript targets should be confirmed with the PI's actual plans for this award period.]
+
+3. UNDERGRADUATE RESEARCH
+
+Undergraduate researchers will contribute to well-defined sub-projects within the broader research program, including:
+
+- Sample preparation: metal transducer film deposition, surface functionalization for interface chemistry studies, and film-quality verification.
+- Data acquisition and preliminary analysis: routine TDTR measurements on calibration and reference samples, with training in identifying and troubleshooting common experimental issues (beam alignment, signal-to-noise optimization, spurious acoustic echoes).
+- Computational modeling: implementation of analytical thermal models in MATLAB or Python for students with programming backgrounds, exploring the sensitivity of TDTR signals to thermal conductivity and interface conductance.
+
+These roles are structured to provide undergraduates with a complete, if compressed, view of the experimental research cycle — from sample preparation through measurement to model-based interpretation.
+
+4. CURRICULUM DEVELOPMENT
+
+Two specific curriculum contributions are planned:
+
+Graduate course module on nanoscale thermal metrology: A multi-week module for an existing graduate-level heat transfer or materials characterization course, covering the principles of TDTR measurement, the linear-systems treatment of pulse accumulation and radial conduction, and the conditions governing validity of the diffusion picture (including the ~100 ps timescale below which crystalline substrates are not expected to behave diffusively). The module will include a computational exercise in which students implement the analytical thermal model and fit it to representative data.
+
+Undergraduate laboratory exercise: A hands-on exercise in which students use a simplified thermoreflectance measurement to determine the thermal conductivity of common reference materials and compare results against literature values, connecting classical heat-transfer coursework to modern nanoscale measurement practice.
+
+5. BROADENING PARTICIPATION
+
+Recruitment of graduate and undergraduate researchers from underrepresented groups in engineering will be pursued through outreach to regional institutions serving underrepresented populations and through participation in graduate recruiting events aimed at diverse candidate pools. [Not sourced from your documents — specific partner institution names and recruiting event names are not provided in the source material and should be filled in based on the PI's actual institutional relationships.] A structured mentoring framework — regular one-on-one meetings between the PI and each student, and pairing of newer students with more senior group members for day-to-day technical guidance — will be used to support retention.
+
+6. K-12 OUTREACH
+
+Outreach activities will use the research topic itself — the fact that heat does not always flow the way everyday intuition suggests at the nanoscale, and that an ultrafast laser can be used to "watch" heat move on picosecond timescales — as an accessible entry point for pre-college audiences. Planned activities include infrared-camera demonstrations of heat conduction through everyday materials, and a simplified explanation of the pump-probe measurement concept using a camera-flash/photograph analogy. [Not sourced from your documents — the number of outreach events per year, target schools, and expected student reach are not specified in the source material.]
+
+7. DISSEMINATION
+
+Publication venues relevant to this research area include journals covering applied physics, heat transfer, and scientific instrumentation, given that this is where the foundational TDTR methodology (Cahill, Maris, Norris and coworkers) and closely related interface-conductance work has historically been published. All manuscripts will be made available as preprints prior to or concurrent with journal submission, consistent with open-science norms in this research community. Analysis code implementing the linear-systems thermal model (pulse accumulation plus anisotropic radial conduction) will be released as open-source software with documentation sufficient for other groups to reproduce the analysis — addressing a genuine barrier to adoption of this technique, since many of the practical details of a working TDTR implementation are typically not included in published methods sections.
+
+8. INFRASTRUCTURE FOR RESEARCH AND EDUCATION
+
+The TDTR measurement system itself represents a piece of shared research infrastructure: its capability to measure thermal conductivity of thin films, thermal boundary conductance at interfaces, and anisotropic thermal properties of layered materials is relevant to collaborators well beyond the immediate research group, spanning materials science, electrical engineering, and physics. Measurement protocols and best practices developed for sample preparation, calibration, and data analysis will be documented so they can be adopted by other groups seeking to implement similar capability.

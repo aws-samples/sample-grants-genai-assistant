@@ -85,3 +85,12 @@ lambda-functions/*/botocore/
 python/eu_grants_full.json
 #
 .threat-composer
+
+# Local security review notes
+DEPENDABOT-REVIEW.md
+CODEQL-REVIEW.md
+SECURITY-REVIEW-*.md
+
+# Local throwaway credential/debug scratch files
+_set_creds.sh
+_tmp*

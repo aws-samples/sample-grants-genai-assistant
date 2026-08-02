@@ -196,9 +196,54 @@ const promptInjectionGuardrail = new CfnGuardrail(
         },
       ],
     },
+    // Contextual grounding: scores each proposal section against the retrieved
+    // KB content actually passed to the model (grounding_source), so we can
+    // report — not silently guess — how much of a section is backed by the
+    // researcher's own documents vs. generic/illustrative filler. NOT used to
+    // block generation (Implementation/Budget sections are legitimately
+    // illustrative-by-design); the agent only reads back the score and stores
+    // it as metadata for the UI. Thresholds set low (0.1) so ApplyGuardrail
+    // effectively never blocks — scoring is what we want, not filtering.
+    contextualGroundingPolicyConfig: {
+      filtersConfig: [
+        {
+          type: 'GROUNDING',
+          threshold: 0.1,
+          action: 'NONE', // score only — never block; proposal sections can legitimately be low-grounding (e.g. illustrative budget/timeline)
+          enabled: true,
+        },
+        {
+          type: 'RELEVANCE',
+          threshold: 0.1,
+          action: 'NONE',
+          enabled: true,
+        },
+      ],
+    },
   }
 );
 
+// NOTE: AWS::Bedrock::GuardrailVersion snapshots are IMMUTABLE — a version
+// number, once created, always reflects the guardrail config at the moment
+// it was created. Two things were tried and both failed for the SAME
+// underlying reason (cross-stack export churn) and are documented here so we
+// don't repeat them:
+//   1. Editing this resource's `description` to force a new snapshot — CDK
+//      treats that as a replacement (delete old + create new), and the
+//      delete fails because the OLD version's export is still imported
+//      (Fn::ImportValue) by the separately-deployed AgentCore stack:
+//      "Cannot update export ...PromptInjectionGuardrailV1... as it is in
+//      use by ...AgentCore...".
+//   2. Adding a second version resource (V2) and repointing AgentCoreStack's
+//      `guardrailVersion` prop at it — this requires CloudFormation to add
+//      the new V2 export AND stop using the V1 export across two
+//      independently-deployed stacks (AgentCoreStack is a sibling top-level
+//      stack via backend.createStack(), not nested) in one changeset. The
+//      ordering doesn't resolve cleanly: "Delete canceled. Cannot delete
+//      export ...PromptInjectionGuardrailV1... as it is in use by
+//      ...AgentCore...".
+// guardrailVersion (V1) stays completely untouched below and keeps serving
+// chat-handler / grants-search-v2 / eu-grants-search-v2 exactly as before.
 const guardrailVersion = new CfnGuardrailVersion(
   backend.stack,
   'PromptInjectionGuardrailV1',
@@ -286,33 +331,16 @@ new CfnOutput(backend.stack, 'WafWebAclArn', {
 const chatHandlerRegion = Stack.of(backend.chatHandler.resources.lambda).region;
 const chatHandlerAccount = Stack.of(backend.chatHandler.resources.lambda).account;
 
-// Inference profile permissions (account-scoped ARNs)
+// Bedrock Claude models — broadened to the whole Claude family so the chat model
+// can be changed by editing CLAUDE_MODEL_ID in chat-handler only (no IAM change).
+// Covers cross-region inference profiles + their foundation-model routing targets.
 backend.chatHandler.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
   actions: ['bedrock:InvokeModel'],
   resources: [
-    `arn:aws:bedrock:${chatHandlerRegion}:${chatHandlerAccount}:inference-profile/us.anthropic.claude-sonnet-4-5-*`,
-    `arn:aws:bedrock:${chatHandlerRegion}:${chatHandlerAccount}:inference-profile/eu.anthropic.claude-sonnet-4-5-*`,
-  ]
-}));
-
-// Foundation model permissions for cross-region routing
-// us.* profiles route to US regions; eu.* profiles route to EU regions
-backend.chatHandler.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
-  actions: ['bedrock:InvokeModel'],
-  resources: [
-    // US regions
-    `arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    // EU regions
-    `arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:eu-west-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:eu-west-3::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:eu-central-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:eu-north-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:eu-south-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-    `arn:aws:bedrock:eu-south-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
+    `arn:aws:bedrock:${chatHandlerRegion}:${chatHandlerAccount}:inference-profile/us.anthropic.claude-*`,
+    `arn:aws:bedrock:${chatHandlerRegion}:${chatHandlerAccount}:inference-profile/eu.anthropic.claude-*`,
+    `arn:aws:bedrock:${chatHandlerRegion}:${chatHandlerAccount}:inference-profile/global.anthropic.claude-*`,
+    `arn:aws:bedrock:*::foundation-model/anthropic.claude-*`,
   ]
 }));
 
@@ -331,10 +359,13 @@ backend.chatHandler.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
 
 // Prompt Manager can invoke Claude models for testing prompts
 // SECURITY FIX: Scope to specific Claude model version used in production
+// Broadened to the Claude family so prompt testing works with any Claude model
+// referenced by a prompt variant (no IAM change needed to switch models).
 backend.promptManager.resources.lambda.addToRolePolicy(new PolicyStatement({
   actions: ['bedrock:InvokeModel'],
   resources: [
-    `arn:aws:bedrock:${Stack.of(backend.promptManager.resources.lambda).region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0`
+    `arn:aws:bedrock:${Stack.of(backend.promptManager.resources.lambda).region}::foundation-model/anthropic.claude-*`,
+    `arn:aws:bedrock:${Stack.of(backend.promptManager.resources.lambda).region}:${Stack.of(backend.promptManager.resources.lambda).account}:inference-profile/*.anthropic.claude-*`
   ]
 }));
 
@@ -1169,6 +1200,14 @@ const openSearchStack = new OpenSearchCollectionStack(
   {
     collectionName: 'kb', // Short base name - will become kb-{region}-{uniqueId}
     accessLogsBucket: accessLogsBucket, // SECURITY FIX: S1 - Pass access logs bucket
+    // ── OpenSearch Serverless NextGen (experimental branch) ──
+    // Scale-to-zero: compute drops to 0 OCU after ~10 min idle for cost savings.
+    // NOTE: first query after idle incurs a ~10-30s cold start. If cold starts are
+    // undesirable for user-facing search, set minSearchOcu: 1 (reduces savings).
+    minIndexingOcu: 0,
+    minSearchOcu: 0,
+    maxIndexingOcu: 4,
+    maxSearchOcu: 4,
   }
 );
 
@@ -1607,6 +1646,29 @@ const agentCore = new AgentCoreStack(
     knowledgeBaseId: openSearchStack.knowledgeBase.attrKnowledgeBaseId,
     appsyncApiId: backend.data.resources.graphqlApi.apiId,
     promptArns: bedrockPrompts.getAllPromptArns(),
+    guardrailId: promptInjectionGuardrail.attrGuardrailId,
+    // IMPORTANT: this MUST stay exactly `guardrailVersion.attrVersion` (V1) —
+    // do not change this value or switch to a literal/different resource.
+    // This is the one cross-stack wiring that is currently deployed and
+    // working; changing it (to a literal like 'DRAFT', to a second version
+    // resource, or to anything else) makes CDK stop referencing V1's export
+    // from this stack, which makes CDK try to remove that export from
+    // backend.stack in the same deployment — and that fails 3/3 times tried,
+    // because AgentCoreStack (this stack) depends on backend.stack, so
+    // backend.stack's export-removal is attempted before/without properly
+    // waiting for this stack's update ("Cannot delete export ... as it is in
+    // use by ...AgentCore..."). This is a known CDK/CloudFormation ordering
+    // limitation for removing cross-stack references between sibling
+    // top-level stacks, not something fixable by changing what value we pass.
+    //
+    // The actual contextual-grounding-needs-DRAFT problem is solved
+    // downstream instead: bc/proposal-generation-agent/agent.py hardcodes
+    // guardrailVersion='DRAFT' directly in its ApplyGuardrail call, ignoring
+    // whatever GUARDRAIL_VERSION resolves to here. So this prop only needs to
+    // keep the guardrail ID/version pre-screen (in the OTHER, non-AgentCore
+    // proposal-generation-agentcore Lambda, see line ~1750) working — which
+    // it already does with V1.
+    guardrailVersion: guardrailVersion.attrVersion,
   }
 );
 

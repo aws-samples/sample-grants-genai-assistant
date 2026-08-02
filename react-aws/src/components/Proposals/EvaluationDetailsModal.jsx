@@ -1,9 +1,48 @@
 import React from 'react';
 
-const EvaluationDetailsModal = ({ evaluation, onClose }) => {
+// Convert score_section_grounding()'s output (per-section {groundingScore, relevanceScore})
+// into a MetricCard-compatible {score, weightedScore, grade, reasoning} shape, averaged
+// across sections. Contextual grounding is informational (see agent.py / backend.ts —
+// action=NONE, never blocks generation), so this card is display-only: there's no
+// "weight" in the overall evaluation score, it's shown alongside the other four metrics
+// purely for visibility, not folded into evaluation.overallScore.
+const buildGroundingScoreData = (sectionGrounding) => {
+    if (!sectionGrounding || Object.keys(sectionGrounding).length === 0) return null;
+
+    const entries = Object.entries(sectionGrounding);
+    const groundingScores = entries.map(([, s]) => s.groundingScore).filter((v) => typeof v === 'number');
+    if (groundingScores.length === 0) return null;
+
+    const avgGrounding = groundingScores.reduce((a, b) => a + b, 0) / groundingScores.length;
+
+    const gradeForScore = (score) => {
+        if (score >= 0.9) return 'A';
+        if (score >= 0.8) return 'B';
+        if (score >= 0.7) return 'C';
+        if (score >= 0.5) return 'D';
+        return 'F';
+    };
+
+    const perSectionLines = entries
+        .map(([name, s]) => {
+            const g = typeof s.groundingScore === 'number' ? `${(s.groundingScore * 100).toFixed(0)}%` : 'N/A';
+            return `${name}: ${g}`;
+        })
+        .join(' · ');
+
+    return {
+        score: avgGrounding,
+        weightedScore: avgGrounding, // no weight in overall score; same value shown for consistency with other cards
+        grade: gradeForScore(avgGrounding),
+        reasoning: `Per section — ${perSectionLines}`
+    };
+};
+
+const EvaluationDetailsModal = ({ evaluation, sectionGrounding, onClose }) => {
     if (!evaluation) return null;
 
     const scores = evaluation.scores || {};
+    const groundingScoreData = buildGroundingScoreData(sectionGrounding);
 
     // Metric explanations
     const metricExplanations = {
@@ -52,6 +91,17 @@ const EvaluationDetailsModal = ({ evaluation, onClose }) => {
                 "Ensure documents are substantial - longer, detailed documents provide more content",
                 "Cover various topics related to the grant (methodology, results, impact, etc.)",
                 "Include different document types - research papers, project reports, case studies, etc."
+            ]
+        },
+        contextualGrounding: {
+            title: "Contextual Grounding",
+            weight: "info only",
+            shortDesc: "How much of the text is backed by your documents vs. generic filler",
+            fullDesc: "This is a separate, informational-only check (Amazon Bedrock Guardrails) run against each generated section, scoring how much of that section's text is actually supported by the researcher content used to write it — as opposed to generic or unsourced content the model filled in. It does not affect the overall grade above and never blocks or alters generation. Sections like Implementation are expected to score lower here since their budget, timeline, and personnel details are often not drawn from your documents (marked \"[Not sourced from your documents]\" in the text).",
+            howToImprove: [
+                "Upload documents with more depth on the topics each section covers — thin source material gives the model less to ground each section in",
+                "Review sections marked with lower grounding scores and check whether the claims made are ones you can support from your own material",
+                "Remember: low grounding on Implementation's budget/timeline is expected and not a quality problem — it's about Intellectual Merit / Broader Impacts sections where grounding matters most"
             ]
         }
     };
@@ -257,7 +307,7 @@ const EvaluationDetailsModal = ({ evaluation, onClose }) => {
                                 📊 Proposal Quality Evaluation
                             </h2>
                             <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
-                                Detailed breakdown of your proposal's quality across four key dimensions
+                                Detailed breakdown of your proposal's quality across {groundingScoreData ? 'five' : 'four'} key dimensions
                             </p>
                         </div>
                         <button
@@ -344,6 +394,9 @@ const EvaluationDetailsModal = ({ evaluation, onClose }) => {
                         <MetricCard metricKey="guidelineAdherence" scoreData={scores.guidelineAdherence} />
                         <MetricCard metricKey="completeness" scoreData={scores.completeness} />
                         <MetricCard metricKey="sourceUtilization" scoreData={scores.sourceUtilization} />
+                        {groundingScoreData && (
+                            <MetricCard metricKey="contextualGrounding" scoreData={groundingScoreData} />
+                        )}
                     </div>
 
                     {/* Strengths, Weaknesses, Recommendations */}

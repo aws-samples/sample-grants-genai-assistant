@@ -19,7 +19,10 @@
     "DOE-Prompt-ImpactAndOutcomes",
     "NASA-Prompt-ScientificTechnicalPlan",
     "NASA-Prompt-NASARelevance",
-    "NASA-Prompt-WorkPlan"
+    "NASA-Prompt-WorkPlan",
+    "DOT-Prompt-ProjectNarrative",
+    "DOT-Prompt-MeritCriteria",
+    "DOT-Prompt-ProjectReadiness"
   ],
   "missing": []
 }

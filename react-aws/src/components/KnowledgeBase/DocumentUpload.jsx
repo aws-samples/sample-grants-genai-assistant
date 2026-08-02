@@ -8,7 +8,7 @@ const SUPPORTED_FILE_TYPES = {
   'text/plain': '.txt'
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (matches backend Lambda limit and Bedrock KB per-file limit)
 const MAX_FILENAME_LENGTH = 100; // S3 key length limit
 
 const DocumentUpload = ({ onUploadComplete }) => {
@@ -479,7 +479,7 @@ const DocumentUpload = ({ onUploadComplete }) => {
           {selectedFile ? selectedFile.name : (dragActive ? 'Drop file here!' : 'Drag & drop or click button below')}
         </h3>
         <p style={{ margin: '0 0 16px 0', color: '#6b7280', fontSize: '14px' }}>
-          Supported: PDF, TXT only (Max 10MB)
+          Supported: PDF, TXT only (Max 50MB)
         </p>
         <button
           onClick={() => document.getElementById('fileInput').click()}

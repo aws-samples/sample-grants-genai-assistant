@@ -35,6 +35,9 @@ export interface AgentCoreStackProps {
     knowledgeBaseId: string;
     appsyncApiId: string;
     promptArns: string[];  // Bedrock prompt ARNs from BedrockPromptsStack
+    guardrailId?: string;      // Bedrock Guardrail ID (contextual grounding scoring)
+    guardrailVersion?: string; // Bedrock Guardrail version to apply
+    proposalTemperature?: number; // Optional Claude sampling temperature override for proposal generation (default 0.3 in agent code if unset)
 }
 
 export class AgentCoreStack extends Stack {
@@ -227,6 +230,13 @@ export class AgentCoreStack extends Stack {
                 REGION: deployRegion,
                 PDF_CONVERTER_ARN: pdfConverterRuntime.agentRuntimeArn,
                 PROPOSAL_EVALUATOR_ARN: evaluatorRuntime.agentRuntimeArn,
+                ...(props.guardrailId ? {
+                    GUARDRAIL_ID: props.guardrailId,
+                    GUARDRAIL_VERSION: props.guardrailVersion || 'DRAFT',
+                } : {}),
+                ...(props.proposalTemperature !== undefined ? {
+                    PROPOSAL_TEMPERATURE: String(props.proposalTemperature),
+                } : {}),
             },
         });
 
@@ -504,70 +514,23 @@ export class AgentCoreStack extends Stack {
             ],
         }));
 
-        // Bedrock Inference Profile (for cross-region routing)
-        // us.* profile for US regions, eu.* profile for EU regions
-        // Includes both Sonnet 4.5 (other agents) and Opus 4.6 (proposal agent)
+        // Bedrock Claude models — broadened to the whole Claude family so the
+        // model can be changed (e.g., Sonnet 4.5 → Opus 4.6/4.7 → Sonnet/Opus 5)
+        // by editing the model ID in agent code only, with no IAM change needed.
+        // Covers both cross-region inference profiles and their foundation-model
+        // routing targets, in all regions. Scoped to Anthropic Claude only.
         role.addToPolicy(new iam.PolicyStatement({
             actions: [
                 'bedrock:InvokeModel',
                 'bedrock:InvokeModelWithResponseStream',
             ],
             resources: [
-                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/us.anthropic.claude-sonnet-4-5-*`,
-                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/eu.anthropic.claude-sonnet-4-5-*`,
-                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/global.anthropic.claude-sonnet-4-5-*`,
-                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/us.anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/eu.anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/global.anthropic.claude-opus-4-6-v1`,
-            ],
-        }));
-
-        // Bedrock Foundation Models (for cross-region inference routing)
-        // us.* profiles can route to any US region; eu.* profiles route within EU
-        role.addToPolicy(new iam.PolicyStatement({
-            actions: [
-                'bedrock:InvokeModel',
-                'bedrock:InvokeModelWithResponseStream',
-            ],
-            resources: [
-                // Sonnet 4.5 - US regions
-                `arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                // Sonnet 4.5 - EU regions
-                `arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:eu-west-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:eu-west-3::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:eu-central-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:eu-north-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:eu-south-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:eu-south-2::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0`,
-                `arn:aws:bedrock:${deployRegion}::foundation-model/us.anthropic.claude-sonnet-4-5-v2:0`,
-                `arn:aws:bedrock:${deployRegion}::foundation-model/eu.anthropic.claude-sonnet-4-5-v2:0`,
-                // Opus 4.6 - US cross-region destinations (us.* profile routes to these)
-                // NOTE: Opus 4.6 ARNs have NO :0 suffix — add both just in case
-                `arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                `arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                `arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                // Opus 4.6 - EU cross-region destinations (eu.* profile routes to these)
-                `arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                `arn:aws:bedrock:eu-west-3::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:eu-west-3::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                `arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                `arn:aws:bedrock:eu-central-2::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:eu-central-2::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                `arn:aws:bedrock:eu-north-1::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:eu-north-1::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                `arn:aws:bedrock:eu-south-1::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:eu-south-1::foundation-model/anthropic.claude-opus-4-6-v1:0`,
-                `arn:aws:bedrock:eu-south-2::foundation-model/anthropic.claude-opus-4-6-v1`,
-                `arn:aws:bedrock:eu-south-2::foundation-model/anthropic.claude-opus-4-6-v1:0`,
+                // Cross-region inference profiles (us./eu./global.) — account-scoped
+                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/us.anthropic.claude-*`,
+                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/eu.anthropic.claude-*`,
+                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/global.anthropic.claude-*`,
+                // Foundation-model routing targets (all regions, all Claude models)
+                `arn:aws:bedrock:*::foundation-model/anthropic.claude-*`,
             ],
         }));
 
@@ -575,6 +538,15 @@ export class AgentCoreStack extends Stack {
         role.addToPolicy(new iam.PolicyStatement({
             actions: ['bedrock:Retrieve'],
             resources: [`arn:aws:bedrock:${deployRegion}:${this.account}:knowledge-base/${knowledgeBaseId}`],
+        }));
+
+        // Bedrock ApplyGuardrail — used for contextual grounding scoring only
+        // (see backend.ts contextualGroundingPolicyConfig). Scoped to the one
+        // guardrail resource; harmless to grant even if guardrailId isn't set
+        // (agent code checks for the env var before calling).
+        role.addToPolicy(new iam.PolicyStatement({
+            actions: ['bedrock:ApplyGuardrail'],
+            resources: [`arn:aws:bedrock:${deployRegion}:${this.account}:guardrail/*`],
         }));
 
         // Bedrock ListPrompts (account-level operation - requires wildcard)
@@ -713,12 +685,27 @@ export class AgentCoreStack extends Stack {
             resources: [`arn:aws:appsync:${deployRegion}:${this.account}:apis/${appsyncApiId}/*`],
         }));
 
-        // Bedrock model permissions
+        // Bedrock Claude models — broadened to the whole Claude family, matching
+        // the Proposal Generation role. Covers both cross-region inference
+        // profiles (the evaluator calls the us.anthropic.claude-sonnet-4-5-*
+        // inference profile, not a bare foundation-model ARN) and their
+        // foundation-model routing targets. Scoped to Anthropic Claude only.
+        // FIX (2026-08-02): evaluator was previously missing the
+        // inference-profile/* resources, so every evaluate_guideline_adherence()
+        // call failed with AccessDeniedException and silently fell back to the
+        // hardcoded 0.70/C+ heuristic score — confirmed via CloudWatch logs.
         role.addToPolicy(new iam.PolicyStatement({
-            actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+            actions: [
+                'bedrock:InvokeModel',
+                'bedrock:InvokeModelWithResponseStream',
+            ],
             resources: [
-                `arn:aws:bedrock:${deployRegion}::foundation-model/anthropic.claude-*`,
-                `arn:aws:bedrock:${deployRegion}::foundation-model/us.anthropic.claude-*`,
+                // Cross-region inference profiles (us./eu./global.) — account-scoped
+                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/us.anthropic.claude-*`,
+                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/eu.anthropic.claude-*`,
+                `arn:aws:bedrock:${deployRegion}:${this.account}:inference-profile/global.anthropic.claude-*`,
+                // Foundation-model routing targets (all regions, all Claude models)
+                `arn:aws:bedrock:*::foundation-model/anthropic.claude-*`,
             ],
         }));
 

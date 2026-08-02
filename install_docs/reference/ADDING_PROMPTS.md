@@ -1,6 +1,6 @@
 # Adding Custom Bedrock Prompts
 
-GROW2 ships with 18 prompts covering NSF, NIH, DOD, European Commission, DOE (Office of Science), and NASA. These are a best-effort starting point — researchers are expected to customize them and add new ones for agencies or program types not covered.
+GROW2 ships with 21 prompts covering NSF, NIH, DOD, European Commission, DOE (Office of Science), NASA, and DOT. These are a best-effort starting point — researchers are expected to customize them and add new ones for agencies or program types not covered.
 
 ## How Prompts Work
 
@@ -39,6 +39,7 @@ The proposal generation agent looks up prompts by agency prefix. For example, if
 | European Commission / Horizon Europe | `European-Commission` | Horizon Europe / MSCA |
 | DOE Office of Science | `DOE` | BES, BER, HEP, NP, FES, ASCR basic research |
 | NASA | `NASA` | ROSES / NOFO research grants |
+| DOT | `DOT` | Discretionary grant programs (BIL/IIJA-era NOFOs) |
 
 ## Adding a New Agency
 
@@ -60,6 +61,14 @@ All prompts receive two variables:
 - `{{grant_info}}` — the specific grant opportunity description, program priorities, and requirements
 
 Write prompts that treat `{{content}}` as the primary source of scientific truth and `{{grant_info}}` as the framing context.
+
+## Attribution Requirement (recommended for every new prompt)
+
+Every current prompt instructs the AI to mark any sentence, figure, or claim NOT drawn from `{{content}}` or `{{grant_info}}` — including general domain knowledge, illustrative figures, or common practice in the field — with `[Not sourced from your documents]` immediately after it. This is what drives the per-section "Grounded" score shown on generated proposals (contextual grounding via Bedrock Guardrails, informational only — it never blocks generation). If you write a new prompt without this instruction, that section's content won't be tagged and its grounding score will be misleading (it will look either artificially high or simply unscored). Copy the attribution paragraph from any existing prompt in `config/bedrock-prompts/` as a starting point.
+
+## Completeness Scoring Auto-Adjusts to Section Count
+
+The Proposal Evaluator's Completeness score (20% of the overall grade) checks the generated section count against how many sections that agency's prompt set defines — it derives this dynamically from the prompt dict built at generation time, not a hardcoded number. So adding or removing a prompt for an agency automatically updates what "complete" means for that agency on the next proposal generated — no evaluator code change needed.
 
 ## After Adding Prompts
 

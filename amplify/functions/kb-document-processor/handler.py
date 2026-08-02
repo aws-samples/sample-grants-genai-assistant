@@ -248,27 +248,39 @@ def process_s3_record(record: Dict[str, Any]) -> Dict[str, Any]:
         
         # Check if this is a PDF that needs text extraction
         if content_type == 'application/pdf' or object_key.lower().endswith('.pdf'):
-            print("🔍 Detected PDF file, extracting text...")
+            print("🔍 Detected PDF file, extracting text (in-memory only)...")
             try:
-                # Extract text from PDF
+                # Extract text from PDF IN MEMORY only.
+                #
+                # We intentionally do NOT write an extracted.txt sibling into the
+                # ingested prefix anymore. Previously we stored
+                # user-{userId}/{documentId}/extracted.txt alongside the original
+                # PDF, but the KB data source ingests everything under 'user-'
+                # (inclusionPrefixes=['user-'], and S3 data sources don't support
+                # exclusions). That caused BOTH the original PDF (parsed natively
+                # by Bedrock) and the pypdf-extracted .txt to be vectorized —
+                # producing near-duplicate chunks and wasting the retrieval budget.
+                #
+                # Bedrock's native PDF parser handles these documents well (and
+                # adds page-number metadata), so we let it be the single canonical
+                # copy. We still extract text here purely to record the character
+                # count (used by the UI token estimate) — text_key stays None so
+                # grant metadata is tagged on the original PDF instead.
                 extracted_text = extract_text_from_pdf(file_bytes)
-                
-                # Store extracted text in S3
-                text_key = store_extracted_text(bucket_name, object_key, extracted_text)
-                
-                # Use extracted text for metadata and vector indexing
+
+                # text_key intentionally left as None (no extracted.txt written).
+                # Use extracted text only for grant-metadata keyword extraction.
                 content = extracted_text
-                
-                # Update DynamoDB with extraction status
+
+                # Update DynamoDB with extraction status + char count (no text_key)
                 update_document_extraction_status(
                     user_id=user_id,
                     document_id=document_id,
-                    text_key=text_key,
                     char_count=len(extracted_text),
                     extraction_status='success'
                 )
                 
-                print(f"✅ PDF text extraction complete: {len(content):,} characters")
+                print(f"✅ PDF text extraction complete: {len(content):,} characters (in-memory, not stored)")
                 
             except Exception as e:
                 print(f"❌ PDF extraction failed: {str(e)}")

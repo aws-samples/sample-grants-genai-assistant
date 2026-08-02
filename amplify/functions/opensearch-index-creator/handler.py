@@ -89,7 +89,11 @@ def create_index(properties):
                     "dimension": 1024,
                     "method": {
                         "name": "hnsw",
-                        "engine": "faiss",
+                        # NOTE: NextGen OpenSearch Serverless does NOT support the
+                        # 'engine' parameter in the k-NN mapping (rejects with
+                        # "Field parameter 'engine' is not supported"). The engine is
+                        # managed by the service. Classic aoss required engine: faiss;
+                        # NextGen must omit it. name/parameters/space_type are accepted.
                         "parameters": {
                             "ef_construction": 512,
                             "m": 16

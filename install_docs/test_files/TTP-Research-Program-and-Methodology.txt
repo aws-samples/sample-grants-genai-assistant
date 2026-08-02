@@ -1,0 +1,62 @@
+Research Program Summary: Nanoscale Thermal Transport at Interfaces and in Anisotropic Materials
+
+1. RESEARCH FOCUS
+
+My research program develops and applies time-domain thermoreflectance (TDTR) to measure thermal transport at the nanoscale, with emphasis on thermal boundary conductance at interfaces, anisotropic thermal conductivity in layered and crystalline materials, and the transition from diffusive to quasi-ballistic phonon transport. The work sits at the intersection of phonon transport and interactions between energy carriers, interfacial thermal phenomena, and new metrology methodologies in thermal sciences.
+
+The central motivation is that as devices and material systems are engineered at length scales approaching the mean free path of dominant heat carriers, classical Fourier diffusion no longer accurately predicts thermal behavior. Interfaces, rather than bulk material properties, increasingly dominate thermal resistance in nanostructured systems. Measuring and understanding this regime requires metrology capable of sub-picosecond temporal resolution and micron-scale spatial resolution, which is what TDTR provides.
+
+2. FUNDAMENTAL SCIENTIFIC QUESTIONS
+
+Question 1: How does interface chemistry and bonding character control thermal boundary conductance, and can this conductance be systematically tuned rather than simply measured?
+
+Thermal boundary conductance G between dissimilar materials has been measured across a wide range: approximately 30 MW/m²K for highly dissimilar material pairs, up to 400 MW/m²K for metal-metal interfaces where electronic contributions dominate, with most solid-solid interfaces of interest falling in the 100-200 MW/m²K range. The acoustic mismatch model (AMM) and diffuse mismatch model (DMM) provide only limiting-case predictions and frequently disagree with measured values by factors of two or more, particularly for interfaces involving molecular materials or chemically functionalized surfaces. My prior work has measured thermal conductance at hydrophilic and hydrophobic interfaces and demonstrated that surface chemistry alone can shift measured conductance significantly, but a predictive framework connecting interface bonding character to conductance across a broad range of chemistries remains incomplete.
+
+Question 2: At what length and time scales does the diffusive picture of phonon transport break down in crystalline substrates, and how does this affect standard thermal metrology?
+
+The Fourier diffusion equation assumes phonon relaxation times are much shorter than the measurement timescale. Molecular dynamics studies on silicon indicate that a significant fraction of room-temperature heat is carried by long-wavelength phonons with relaxation times of 100 picoseconds or longer. This means the diffusion-based thermal model used in standard TDTR analysis is not expected to be valid for pump-probe delay times shorter than approximately 100 ps in crystalline substrates. My work investigates this transition systematically by varying modulation frequency and pump/probe spot size, since pulse accumulation effects allow two distinct length scales (set by thermal penetration depth and by lateral spot size) to be probed simultaneously within a single measurement.
+
+Question 3: Can thermal transport in confined liquid layers and nanoparticle suspensions be measured and modulated using the same optical platform used for solid-state interface measurements?
+
+The TDTR geometry requires only a thin metal transducer film and, for liquid measurements, a liquid layer as thin as approximately 500 nm confined against that transducer. This thin-layer geometry is what enables application of large electric fields (on the order of 10^6 V/m) across the liquid volume using only modest applied voltages, with the metal transducer itself serving as one electrode. This opens the possibility of studying nanoparticle dynamics and solid-liquid interface conductance under applied fields using the identical optical measurement platform used for solid interfaces.
+
+3. TECHNICAL APPROACH AND METHODOLOGY
+
+3.1 Time-Domain Thermoreflectance System
+
+The core experimental platform is a pump-probe optical system. A pulsed laser (the pump) deposits energy into a thin metal transducer film — typically 70-100 nm of aluminum — deposited on the sample of interest. The resulting change in the transducer's temperature is monitored through the temperature dependence of its optical reflectance, using a time-delayed probe pulse. My implementation incorporates a frequency-doubled pump beam to reduce optical noise from scattered pump light, an expanded probe beam in a coaxial geometry to reduce errors from beam divergence and spot-shape mismatch, and a single objective lens with integrated optical imaging to make alignment and focusing fast and repeatable.
+
+Thermal transport properties are extracted by adjusting free parameters in an analytical thermal model to obtain the best fit between predicted and measured thermal response — an inverse-problem approach analogous to the analysis of ellipsometry or x-ray reflectivity data. For a typical interface conductance measurement, the unknowns are the sample's thermal conductivity κ and the thermal conductance G of the transducer/sample interface. The transducer film thickness is independently measured using picosecond acoustics (the same optical system detects coherent acoustic echoes traveling through the film), the heat capacity of the transducer metal is taken from established literature values, and the transducer's own thermal conductivity is estimated from its in-plane electrical conductivity via the Wiedemann-Franz law. This leaves only the target properties as free parameters.
+
+3.2 Analytical Thermal Model and Pulse Accumulation
+
+Data analysis proceeds from an analytical solution to the heat diffusion equation in cylindrical coordinates, using a linear systems framework to model the measured signal as a transfer function relating the pump heating pulse train to the measured probe reflectivity signal. This framework explicitly incorporates pulse accumulation — the fact that the measured signal depends not only on pump-probe delay time but also on modulation frequency and laser repetition rate — and its relationship to radial heat conduction. Because pulse accumulation and radial conduction respond to different combinations of experimental parameters, varying modulation frequency and spot size together allows two distinct length scales (a cross-plane thermal penetration depth and a lateral spreading radius) to be probed within the same measurement, rather than requiring separate experiments.
+
+The analytical solution for radial heat transfer through multilayer structures has been extended in my work to include anisotropic thermal properties at no additional computational cost relative to the isotropic solution. This is essential for characterizing materials such as highly ordered pyrolytic graphite (HOPG) and semiconductor superlattices, where in-plane and cross-plane thermal conductivity can differ by more than two orders of magnitude.
+
+3.3 Interface Conductance Measurements with Controlled Chemistry
+
+To investigate how interface chemistry controls thermal boundary conductance, the transducer film can be coated with a few nanometers of a secondary material (for example, a thin SiO2 or Si layer) to produce a well-defined, chemically distinct interface termination before deposition of the primary transducer. Self-assembled monolayers of varying chain length and terminal chemistry (hydrophilic versus hydrophobic termination) provide additional systematic control of interface bonding character. My prior measurements of thermal conductance at hydrophilic and hydrophobic solid-liquid interfaces demonstrated that this chemistry-dependent tuning is measurable and repeatable using the TDTR platform.
+
+3.4 Extension to Liquids and Nanoparticle Suspensions
+
+The TDTR technique extends naturally to measurement of thermal transport in bulk liquids and thin confined liquid layers. Because only a few hundred nanometers of liquid thickness is required for a valid measurement, and because the metal transducer can double as an electrode, this geometry enables application of large electric fields across the liquid volume with only modest applied voltage. This configuration supports study of nanoparticle and emulsion dynamics under applied fields, in addition to conventional thermal conductivity and solid-liquid interface conductance measurements.
+
+3.5 Extension to Quasi-Ballistic Transport
+
+Because the diffusion-based analytical model is not expected to be valid for pump-probe delay times below approximately 100 ps in crystalline substrates, quasi-ballistic transport effects are investigated by systematically varying modulation frequency and pump/probe spot size and comparing the resulting apparent thermal conductivity against diffusion-model predictions. Departures from the diffusion-model prediction at small spot sizes or high modulation frequencies are indicative of a transition toward quasi-ballistic transport, where the effective thermal conductivity measured by TDTR becomes a function of the measurement length scale rather than a fixed material property.
+
+4. NOVEL CONTRIBUTIONS
+
+- A linear systems framework for TDTR data analysis that unifies the treatment of pulse accumulation and radial (including anisotropic) heat conduction in a single, computationally efficient formalism, rather than treating these effects as separate corrections.
+- Extension of the analytical multilayer radial heat transfer solution to anisotropic thermal properties without additional computational expense relative to the isotropic case, enabling routine characterization of strongly anisotropic materials such as HOPG and semiconductor superlattices.
+- Systematic measurement of interface thermal conductance as a function of controlled interface chemistry (hydrophilic/hydrophobic termination, nanometer-scale secondary coatings), moving beyond single-point conductance measurements toward a chemistry-conductance relationship.
+- A thin-liquid-layer TDTR geometry that enables application of large electric fields across nanoscale liquid volumes using the transducer itself as an electrode, opening measurement of field-dependent thermal transport in nanoparticle suspensions and solid-liquid interfaces.
+
+5. RELATIONSHIP TO PRIOR WORK
+
+The pump-probe technique for thermal measurements was first applied to thermal transport by Paddock and Eesley, and was subsequently extended by Maris and coworkers (who introduced pulse accumulation concepts and improved apparatus for picosecond pump-probe measurement), by Norris and coworkers (femtosecond extensions), and by Cahill and coworkers (the analytical solution to the diffusion equation in cylindrical coordinates that underlies modern TDTR analysis, and systematic interface conductance measurements including hydrophilic/hydrophobic interfaces). My own prior measurements have applied this lineage of techniques to bulk liquids, highly ordered pyrolytic graphite, and semiconductor superlattices, and have extended the pulse-accumulation framework to anisotropic radial heat conduction.
+
+6. PRELIMINARY RESULTS DEMONSTRATING FEASIBILITY
+
+The TDTR system described above has been designed, built, and validated against reference materials, reproducing literature thermal conductivity values for standard substrates. Cross-plane thermal conductivity measurements spanning more than two orders of magnitude have been demonstrated on thin-film and bulk samples. Both cross-plane and in-plane thermal conductivity have been successfully extracted for highly ordered pyrolytic graphite using the anisotropic analytical model. Thermal conductivity measurements have also been completed on bulk liquids and on nanoparticle suspensions, establishing the feasibility of the thin-liquid-layer geometry described above.

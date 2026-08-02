@@ -88,6 +88,89 @@ const ContentQualityBadge = ({ quality }) => {
   );
 };
 
+// Contextual Grounding Badge Component
+// Summarizes, across all generated sections, how much content is actually
+// backed by the researcher's uploaded documents (grounding score) vs. how
+// on-topic each section is for the request (relevance score) — as reported
+// by Bedrock Guardrails contextual grounding. This is informational only:
+// it never blocked or altered generation (sections like Implementation
+// legitimately include content not sourced from the docs for budget/timeline
+// figures, marked "[Not sourced from your documents]"), it just tells
+// the user honestly how much of the proposal is document-backed.
+const GroundingBadge = ({ sectionGrounding }) => {
+  if (!sectionGrounding || Object.keys(sectionGrounding).length === 0) return null;
+
+  const entries = Object.entries(sectionGrounding);
+  const groundingScores = entries.map(([, s]) => s.groundingScore).filter((v) => typeof v === 'number');
+  if (groundingScores.length === 0) return null;
+
+  const avgGrounding = groundingScores.reduce((a, b) => a + b, 0) / groundingScores.length;
+  const minGrounding = Math.min(...groundingScores);
+
+  const getColor = (score) => {
+    if (score >= 0.7) return 'green';
+    if (score >= 0.4) return 'yellow';
+    if (score >= 0.2) return 'orange';
+    return 'red';
+  };
+  const color = getColor(minGrounding);
+
+  const getIcon = (c) => {
+    switch (c) {
+      case 'green': return '📄';
+      case 'yellow': return '📋';
+      case 'orange': return '📝';
+      default: return '❓';
+    }
+  };
+
+  const perSectionLines = entries
+    .map(([name, s]) => {
+      const g = typeof s.groundingScore === 'number' ? s.groundingScore.toFixed(2) : 'N/A';
+      const r = typeof s.relevanceScore === 'number' ? s.relevanceScore.toFixed(2) : 'N/A';
+      return `  ${name}: grounding ${g}, relevance ${r}`;
+    })
+    .join('\n');
+
+  const tooltip =
+    `Contextual Grounding (avg ${avgGrounding.toFixed(2)}, lowest ${minGrounding.toFixed(2)})\n\n` +
+    `This measures how much of each section is actually backed by your\n` +
+    `uploaded documents, vs. generic proposal content the model filled in.\n` +
+    `Sections like Implementation legitimately score lower — budget,\n` +
+    `timeline, and personnel details are often not sourced from your\n` +
+    `documents and are marked "[Not sourced from your documents]" in the text.\n\n` +
+    `Each score is a length-weighted average across the whole section\n` +
+    `(scored in ~4,000-char chunks to cover the full text).\n\n` +
+    `Per section:\n${perSectionLines}`;
+
+  const baseStyle = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 12px',
+    borderRadius: '4px',
+    fontSize: '12px',
+    fontWeight: '600',
+    marginRight: '8px',
+    cursor: 'help',
+    whiteSpace: 'nowrap'
+  };
+  const colorStyles = {
+    green: { backgroundColor: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' },
+    yellow: { backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeaa7' },
+    orange: { backgroundColor: '#ffe5d0', color: '#d63031', border: '1px solid #ffccb3' },
+    red: { backgroundColor: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' }
+  };
+
+  return (
+    <div style={{ ...baseStyle, ...colorStyles[color] }} title={tooltip}>
+      <span style={{ fontSize: '14px' }}>{getIcon(color)}</span>
+      <span style={{ fontSize: '11px', opacity: 0.7, marginRight: '2px' }}>Grounded:</span>
+      <span>{Math.round(avgGrounding * 100)}%</span>
+    </div>
+  );
+};
+
 // Evaluation Button Component (clickable badge that opens modal)
 const EvaluationButton = ({ evaluation, onClick }) => {
   if (!evaluation) return null;
@@ -172,11 +255,11 @@ const EvaluationButton = ({ evaluation, onClick }) => {
 };
 
 const ProposalsList = () => {
-  console.log('🚀 ProposalsList component loaded - VERSION 2');
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedEvaluation, setSelectedEvaluation] = useState(null);
+  const [selectedGrounding, setSelectedGrounding] = useState(null);
   const [selectedError, setSelectedError] = useState(null);
 
   useEffect(() => {
@@ -642,11 +725,17 @@ const ProposalsList = () => {
                       {/* Content Quality Badge */}
                       <ContentQualityBadge quality={proposal.metadata?.contentQuality} />
 
+                      {/* Contextual Grounding Badge */}
+                      <GroundingBadge sectionGrounding={proposal.metadata?.sectionGrounding} />
+
                       {/* Evaluation Button (clickable badge that opens modal) */}
                       {proposal.metadata?.evaluation && (
                         <EvaluationButton
                           evaluation={proposal.metadata.evaluation}
-                          onClick={() => setSelectedEvaluation(proposal.metadata.evaluation)}
+                          onClick={() => {
+                            setSelectedEvaluation(proposal.metadata.evaluation);
+                            setSelectedGrounding(proposal.metadata.sectionGrounding || null);
+                          }}
                         />
                       )}
 
@@ -773,7 +862,11 @@ const ProposalsList = () => {
       {selectedEvaluation && (
         <EvaluationDetailsModal
           evaluation={selectedEvaluation}
-          onClose={() => setSelectedEvaluation(null)}
+          sectionGrounding={selectedGrounding}
+          onClose={() => {
+            setSelectedEvaluation(null);
+            setSelectedGrounding(null);
+          }}
         />
       )}
 
