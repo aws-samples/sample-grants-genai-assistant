@@ -13,7 +13,7 @@
 
 import { Stack, Duration } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha';
+import * as agentcore from 'aws-cdk-lib/aws-bedrockagentcore';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';

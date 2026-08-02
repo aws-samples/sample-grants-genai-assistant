@@ -6,7 +6,11 @@
 #
 # DESCRIPTION:
 #   Deletes ALL Grow2 Platform resources.
-#   - Phase 0: Empty S3 buckets + delete OpenSearch/KB before stack deletion
+#   - Phase 0: Empty S3 buckets + delete AgentCore runtimes before stack deletion
+#              (the OpenSearch collection/collection group and Bedrock Knowledge
+#              Base are deleted by CloudFormation itself as part of Phase 1 —
+#              confirmed working for both classic and NextGen OpenSearch
+#              Serverless collections, no manual pre-cleanup needed for either)
 #   - Phase 1: Delete stacks in dependency order:
 #              AgentCore → data nested stack → root stack → BedrockPrompts
 #   - Phase 2: Clean up retained/orphaned resources CloudFormation left behind
@@ -91,7 +95,7 @@ empty_s3_buckets() {
 }
 
 # ============================================================================
-# PHASE 0: Empty S3 buckets + delete OpenSearch/KB before stack deletion
+# PHASE 0: Empty S3 buckets + delete AgentCore runtimes before stack deletion
 # ============================================================================
 echo "================================================"
 echo "Phase 0: Pre-deletion Cleanup"
@@ -101,22 +105,6 @@ echo ""
 echo "Emptying S3 buckets..."
 empty_s3_buckets
 echo "S3 buckets emptied"
-echo ""
-
-echo "Finding Amazon OpenSearch Serverless collections..."
-COLLECTIONS=$(aws opensearchserverless list-collections \
-  --region "$DELETE_REGION" \
-  --query 'collectionSummaries[?contains(name, `grow2`) || contains(name, `amplify`)].id' \
-  --output text 2>/dev/null || echo "")
-if [ -n "$COLLECTIONS" ]; then
-  for collection_id in $COLLECTIONS; do
-    echo "  - Deleting collection: $collection_id"
-    aws opensearchserverless delete-collection --id "$collection_id" --region "$DELETE_REGION" 2>/dev/null || true
-  done
-  echo "OpenSearch collections deleted"
-else
-  echo "  No OpenSearch collections found"
-fi
 echo ""
 
 echo "Deleting Amazon Bedrock AgentCore Runtimes (before CFN stack deletion)..."
@@ -134,22 +122,6 @@ if [ -n "$AGENT_RUNTIMES" ]; then
   echo "AgentCore Runtimes deleted"
 else
   echo "  No AgentCore Runtimes found"
-fi
-echo ""
-
-echo "Finding Amazon Bedrock Knowledge Bases..."
-KBS=$(aws bedrock-agent list-knowledge-bases \
-  --region "$DELETE_REGION" \
-  --query 'knowledgeBaseSummaries[?contains(name, `grow2`) || contains(name, `amplify`)].knowledgeBaseId' \
-  --output text 2>/dev/null || echo "")
-if [ -n "$KBS" ]; then
-  for kb in $KBS; do
-    echo "  - Deleting: $kb"
-    aws bedrock-agent delete-knowledge-base --knowledge-base-id "$kb" --region "$DELETE_REGION" 2>/dev/null || true
-  done
-  echo "Knowledge Bases deleted"
-else
-  echo "  No Knowledge Bases found"
 fi
 echo ""
 
