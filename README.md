@@ -165,6 +165,8 @@ This walkthrough verifies the full pipeline — knowledge base upload, grant sea
 > ./installation/delete-grow2.sh us-east-2
 > ```
 
+If the delete script gets stuck or a stack ends up in a state it can't clean up automatically (`DELETE_FAILED`, `UPDATE_ROLLBACK_COMPLETE`, etc.), see [Manually Deleting Stacks from the Console](install_docs/errors/KNOWN_ERRORS.md#manually-deleting-stacks-from-the-console) for a step-by-step fallback.
+
 ---
 
 ## Project Structure
@@ -537,7 +539,30 @@ characteristics differ by model, so re-check proposal quality after switching.
 
 ### Updating the Stack
 
-Run the same deploy script you used for the initial install:
+⚠️ **If you deployed this stack before OpenSearch Serverless NextGen support was added, check your collection generation first — see below.** Updating in place on top of a Classic collection will fail partway through with a CloudFormation error about a custom-named resource requiring replacement.
+
+**Check which OpenSearch Serverless generation you're on:**
+
+1. Go to AWS Console → **Amazon OpenSearch Service** → **Serverless** → **Collections**
+2. Open your knowledge base collection (named `kb-<id>`)
+3. Look at **Serverless generation** in the General information panel
+
+![Classic collection generation check](install_docs/images/classic-collection-check.png)
+
+- **Classic** → you must delete and reinstall the stack (see below) before updating — an in-place `git pull` + redeploy will fail
+- **NextGen** → you're already on the current architecture, a normal in-place update will work fine
+
+**If you're on Classic, delete and reinstall instead of updating in place:**
+
+```bash
+git pull
+./installation/delete-grow2.sh us-east-1
+./installation/deploy-grow2-bootstrap.sh us-east-1
+```
+
+This is a one-time step for the Classic→NextGen transition only — it removes all data (proposals, uploaded knowledge base documents, etc.), so re-upload any documents you need after the reinstall completes. Once you're on NextGen, future updates work normally with a simple `git pull` + redeploy.
+
+**If you're already on NextGen (or this is a fresh install), update normally:**
 
 ```bash
 git pull

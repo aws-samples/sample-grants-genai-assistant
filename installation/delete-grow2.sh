@@ -156,9 +156,18 @@ echo "Phase 1: Deleting CloudFormation Stacks"
 echo "================================================"
 echo ""
 
+# NOTE: the status filter below MUST include UPDATE_ROLLBACK_COMPLETE and
+# UPDATE_ROLLBACK_FAILED, not just the "happy path" statuses. If a previous
+# deploy on this stack failed and rolled back, the stack sits in one of
+# those two states — leaving them out of the filter means list-stacks
+# returns nothing for the real root/AgentCore/data stacks, and the
+# "shortest matching name" fallback below silently latches onto an
+# unrelated nested stack instead, which is deleted while the real stacks
+# are never touched. Confirmed live: this exact scenario left a root stack
+# stuck in UPDATE_ROLLBACK_COMPLETE untouched across an entire delete run.
 ROOT_STACK=$(aws cloudformation list-stacks \
   --region "$DELETE_REGION" \
-  --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE DELETE_FAILED \
+  --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE UPDATE_ROLLBACK_COMPLETE UPDATE_ROLLBACK_FAILED DELETE_FAILED \
   --query 'StackSummaries[?starts_with(StackName, `amplify-grow2-`)].StackName' \
   --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' | \
   awk '{ print length, $0 }' | sort -n | head -1 | awk '{print $2}')
@@ -172,7 +181,7 @@ else
   # 1. Delete AgentCore first — imports from data stack
   AGENTCORE_STACK=$(aws cloudformation list-stacks \
     --region "$DELETE_REGION" \
-    --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE DELETE_FAILED \
+    --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE UPDATE_ROLLBACK_COMPLETE UPDATE_ROLLBACK_FAILED DELETE_FAILED \
     --query 'StackSummaries[?contains(StackName, `AgentCore`) && contains(StackName, `grow2`)].StackName' \
     --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' | head -1)
 
@@ -189,7 +198,7 @@ else
   # 2. Delete data nested stack — imports BedrockPrompts exports
   DATA_STACK=$(aws cloudformation list-stacks \
     --region "$DELETE_REGION" \
-    --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE DELETE_FAILED \
+    --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE UPDATE_ROLLBACK_COMPLETE UPDATE_ROLLBACK_FAILED DELETE_FAILED \
     --query 'StackSummaries[?contains(StackName, `-data`) && contains(StackName, `grow2`)].StackName' \
     --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' | head -1)
 
@@ -240,7 +249,7 @@ else
   # 4. Delete BedrockPrompts last — data stack is now gone, exports are free
   BEDROCK_PROMPTS_STACK=$(aws cloudformation list-stacks \
     --region "$DELETE_REGION" \
-    --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE DELETE_FAILED \
+    --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE UPDATE_ROLLBACK_COMPLETE UPDATE_ROLLBACK_FAILED DELETE_FAILED \
     --query 'StackSummaries[?contains(StackName, `BedrockPrompts`) && contains(StackName, `grow2`)].StackName' \
     --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' | head -1)
 
@@ -475,7 +484,7 @@ echo ""
 
 REMAINING=$(aws cloudformation list-stacks \
   --region "$DELETE_REGION" \
-  --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE DELETE_FAILED \
+  --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE ROLLBACK_COMPLETE UPDATE_ROLLBACK_COMPLETE UPDATE_ROLLBACK_FAILED DELETE_FAILED \
   --query 'StackSummaries[?contains(StackName, `grow2`)].StackName' \
   --output text 2>/dev/null || echo "")
 if [ -z "$REMAINING" ]; then

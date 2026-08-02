@@ -77,6 +77,33 @@ Seen on the AgentCore CloudFormation stack during deletion.
 
 ---
 
+## AgentCore Stack Fails to Delete — `NotStabilized` Timeout
+
+**Error:**
+```
+DELETE_FAILED
+Resource handler returned message: "Request timed out while deleting
+AWS::BedrockAgentCore::Runtime" (RequestToken: ..., HandlerErrorCode: NotStabilized)
+```
+Seen on the AgentCore CloudFormation stack during deletion. Usually only 1-3 of the 5 runtimes hit this — CloudFormation stops processing the rest once the first one fails, so you may see a mix of runtimes still `READY` or stuck `Deleting` in the AgentCore console.
+
+**Cause:** Deleting a `AWS::BedrockAgentCore::Runtime` resource can occasionally take longer than CloudFormation's internal timeout for the operation to report back as stabilized. This is a rare, timing-dependent issue on the AWS service side, not a code bug or something the delete script reliably triggers — the script has run successfully dozens of times without hitting it, and reproducing it live during testing required deploying/deleting repeatedly. `delete-grow2.sh` pre-deletes all runtimes via direct API before the CFN stack deletion runs, which gives CloudFormation a head start and should make this less likely, but it cannot fully prevent it since the timeout lives in the AgentCore/CloudFormation service integration, not in the script.
+
+**Fix — manual console cleanup:**
+1. Go to AWS Console → Amazon Bedrock → AgentCore → Runtime resources
+2. For any runtime still showing `READY` (not already `Deleting`), select it and delete it manually
+3. Wait for it to disappear from the list (usually 1-2 minutes)
+4. Go to CloudFormation → find the AgentCore stack in `DELETE_FAILED` state
+5. Select it and choose **Delete** → **Force delete** — this should now succeed since the runtimes are gone
+6. Re-run the delete script to finish cleaning up the remaining stacks and resources:
+   ```bash
+   ./installation/delete-grow2.sh <region>
+   ```
+
+This is not elegant, but it's a reliable manual escape hatch if the delete script's built-in retry/poll logic doesn't clear the runtimes in time.
+
+---
+
 ## AgentCore Internal Failure
 
 **Error:**
@@ -204,5 +231,40 @@ If all 3 retries fail, the proposal will still be marked `FAILED`. In that case:
 3. If failures are sustained (more than 15-20 minutes), check Bedrock model access is still enabled: AWS Console → Bedrock → Model access
 
 **Note:** This error can also appear for other agents (`proposal_evaluator_agent`, `grants_search_agent_v2`, etc.) — the same retry logic applies. If you see it consistently across all agents, it is more likely a regional Bedrock degradation than an isolated issue.
+
+---
+
+## Manually Deleting Stacks from the Console
+
+`delete-grow2.sh` handles the vast majority of cleanup scenarios automatically, but CloudFormation stack deletion has enough failure modes (service-side timeouts, a stack left in a rollback state from an interrupted deploy, cross-stack export dependencies, etc.) that no script can guarantee a clean automatic path every time. If the script exits with stacks still listed under "Some stacks may still exist," or you just want to see and control exactly what's happening, the console walkthrough below always works as a fallback.
+
+**1. Identify what's actually left**
+
+Go to AWS Console → CloudFormation → Stacks, and switch the status filter to show all statuses (not just active ones — you need to see `DELETE_FAILED`, `UPDATE_ROLLBACK_COMPLETE`, etc. too). Look for anything starting with `amplify-grow2-` or containing `AgentCore` / `BedrockPrompts`.
+
+**2. Delete in dependency order**
+
+Cross-stack references mean deleting in the wrong order will fail. Delete in this order:
+1. Any stack with `AgentCore` in the name (imports from the data stack)
+2. Any stack with `-data` in the name (imports BedrockPrompts exports)
+3. The root stack (`amplify-grow2-root-sandbox-<id>`, no other suffix)
+4. The `BedrockPrompts` stack (everything else depends on it, delete last)
+
+For each: select the stack → **Delete**. If a stack is in `DELETE_FAILED`, use **Delete** → **Force delete** instead (this skips resources CloudFormation couldn't clean up and just removes the stack record — see step 3 below for cleaning those up separately).
+
+**3. Check for orphaned resources Force Delete left behind**
+
+Force Delete removes the *stack*, not necessarily every resource in it. After using it, check for and manually delete:
+- **AgentCore Runtimes**: Console → Amazon Bedrock → AgentCore → Runtime resources — delete any still listed
+- **OpenSearch Serverless collections**: Console → Amazon OpenSearch Service → Serverless → Collections
+- **S3 buckets**: Console → S3 — any bucket starting with `amplify-grow2-` or `kb-docs-`; buckets must be emptied before they can be deleted (Console → select bucket → Empty, then Delete)
+- **DynamoDB tables**: Console → DynamoDB → Tables — anything referencing GROW2 model names (`Proposal`, `DocumentMetadata`, `GrantRecord`, etc.)
+
+**4. Re-run the script to catch anything else**
+
+Once the console-visible stacks are gone, run the delete script again — Phase 2 will still clean up SSM parameters, CloudWatch log groups, ECR repos, and CodeBuild projects that don't show up in the CloudFormation console at all:
+```bash
+./installation/delete-grow2.sh <region>
+```
 
 ---
