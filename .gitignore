@@ -94,3 +94,7 @@ SECURITY-REVIEW-*.md
 # Local throwaway credential/debug scratch files
 _set_creds.sh
 _tmp*
+_overnight_delete_redeploy.py
+_overnight_report.txt
+_overnight_report.json
+_overnight_run.log
