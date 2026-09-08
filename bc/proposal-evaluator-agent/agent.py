@@ -91,6 +91,29 @@ print("", flush=True)
 # STEP 8: Initialize AWS clients
 print("[Proposal Evaluator] STEP 8: Initializing AWS clients...", flush=True)
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-2')
+
+# Cross-region inference profile for the per-section guideline-adherence calls.
+#
+# FIX: this was hardcoded to 'us.anthropic.claude-sonnet-4-5-20250929-v1:0', which does
+# not exist outside the US routing pool. In eu-west-1 every section failed with
+#   ValidationException: The provided model identifier is invalid
+# and because _evaluate_section_adherence() catches per-section errors and returns a
+# flat 0.70, the failure was SILENT: the proposal still completed and still showed a
+# plausible Quality badge (observed: C 77%) built entirely on fallback scores. Nothing
+# in the UI indicated the evaluation had not actually run.
+#
+# Confirmed live in eu-west-1 (834701024133): all three sections errored, then
+# "✅ Guideline adherence score: 0.70" — the fallback signature.
+#
+# Region prefix matches bc/proposal-generation-agent/agent.py and
+# amplify/functions/chat-handler/handler.py. The IAM policy on this role already grants
+# inference-profile/eu.anthropic.claude-* (see createProposalEvaluatorRole in
+# amplify/custom/agentcore-stack.ts), so no permission change is needed.
+EVALUATOR_MODEL_ID = (
+    'eu.anthropic.claude-sonnet-4-5-20250929-v1:0' if AWS_REGION.startswith('eu-')
+    else 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
+)
+print(f"[Proposal Evaluator] ✅ EVALUATOR_MODEL_ID: {EVALUATOR_MODEL_ID}", flush=True)
 logger.info(f"[Proposal Evaluator] Using AWS region: {AWS_REGION}")
 print(f"[Proposal Evaluator] Using AWS region: {AWS_REGION}", flush=True)
 
@@ -367,7 +390,7 @@ Be critical but fair. Focus on what's actually in this section."""
 
     try:
         response = bedrock_client.invoke_model(
-            modelId='us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+            modelId=EVALUATOR_MODEL_ID,
             body=json.dumps({
                 "anthropic_version": "bedrock-2023-05-31",
                 # FIX (2026-08-02): was 2000, too tight for sections with dense
