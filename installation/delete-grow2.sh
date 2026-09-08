@@ -188,10 +188,108 @@ else
   if [ -n "$AGENTCORE_STACK" ]; then
     echo "Deleting AgentCore first (imports from data stack)..."
     aws cloudformation delete-stack --stack-name "$AGENTCORE_STACK" --region "$DELETE_REGION" 2>/dev/null || true
-    aws cloudformation wait stack-delete-complete \
-      --stack-name "$AGENTCORE_STACK" --region "$DELETE_REGION" 2>/dev/null \
-      && echo "  Deleted: $AGENTCORE_STACK" \
-      || echo "  May have failed: $AGENTCORE_STACK — continuing"
+    if aws cloudformation wait stack-delete-complete \
+         --stack-name "$AGENTCORE_STACK" --region "$DELETE_REGION" 2>/dev/null; then
+      echo "  Deleted: $AGENTCORE_STACK"
+    else
+      # RECOVERY PATH for an intermittent AgentCore stack delete failure.
+      #
+      # Symptom: one or more AWS::BedrockAgentCore::Runtime resources come back as
+      #   "Access denied for operation 'AWS::BedrockAgentCore::Runtime'"
+      #   (HandlerErrorCode: AccessDenied)
+      # leaving the stack DELETE_FAILED. Despite the wording this is NOT an IAM or
+      # SCP problem — see the "AccessDenied on Already-Deleted Runtimes" entry in
+      # install_docs/errors/KNOWN_ERRORS.md for how to tell the difference.
+      #
+      # Context: Phase 0 above deletes the runtimes directly via
+      # bedrock-agentcore-control, deliberately, because without that head start
+      # CloudFormation's own deletion can hit NotStabilized and strand runtimes
+      # ALIVE outside CFN's control (commit 3277059). Two actors deleting the same
+      # resources is inherently racy.
+      #
+      # WHAT WE ACTUALLY KNOW (two observed teardowns, us-east-2):
+      #   - 688567266976: Phase 0's poll loop ran its full 3 minutes and never saw
+      #     the runtime list empty; CFN then failed on 3 of 5 with AccessDenied.
+      #   - 834701024133: Phase 0's poll loop exited early with the list empty;
+      #     CFN then deleted all 5 cleanly and this branch never ran.
+      #
+      # So the failure correlates with runtimes still being in `Deleting` state
+      # when CloudFormation reaches them, rather than with them being fully absent.
+      # That makes Phase 0's poll loop the primary mitigation and this branch a
+      # backstop for when the poll times out before the runtimes drain.
+      #
+      # MECHANISM (established by forcing the race in eu-west-1, poll cut to one
+      # iteration so CFN reached the runtimes ~10s after the delete calls):
+      #
+      #   CFN handler, runtime still `Deleting`  -> AccessDenied
+      #   CFN handler, runtime fully absent      -> treated as already-deleted, success
+      #   raw CLI delete-agent-runtime, absent   -> AccessDenied
+      #
+      # The CloudFormation handler and the raw API disagree about a missing runtime,
+      # which is why manually retrying a delete is a MISLEADING diagnostic — it can
+      # report AccessDenied for a runtime that CFN would have deleted cleanly.
+      #
+      # This also explains the consistent 3-of-5 split seen in both accounts:
+      # ProposalGenerationRuntime depends on the PDF converter and evaluator ARNs, so
+      # CFN deletes it in the FIRST wave alongside the two independent search runtimes
+      # (Us/EuGrantsSearchV2). Those three hit the runtimes mid-delete and fail.
+      # PdfConverter and ProposalEvaluator are deleted in a later wave, by which point
+      # the runtimes are fully gone, so they always succeed. The failing set is
+      # therefore predictable, not random.
+      #
+      # Either way the recovery is the same, which is why this branch is worth
+      # having even though the cause is not fully pinned down. Previously it just
+      # printed "May have failed ... continuing", leaving the stack DELETE_FAILED
+      # and blocking every stack that depends on it — the whole teardown then had
+      # to be finished by hand from the console. Instead, retry the delete while
+      # retaining ONLY the resources CFN reported as failed. That is narrower than
+      # --deletion-mode FORCE_DELETE_STACK: it names the exact stale resource
+      # records rather than letting CFN abandon anything it struggles with.
+      #
+      # NOTE: this branch is UNTESTED against a live failure — the race did not
+      # reproduce in 834701024133. To exercise it deliberately, shorten the Phase 0
+      # poll loop above to 1-2 iterations so CFN reaches the runtimes mid-delete.
+      echo "  Delete failed — checking for already-deleted AgentCore runtimes..."
+
+      FAILED_RESOURCES=$(aws cloudformation describe-stack-resources \
+        --stack-name "$AGENTCORE_STACK" --region "$DELETE_REGION" \
+        --query 'StackResources[?ResourceStatus==`DELETE_FAILED`].LogicalResourceId' \
+        --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' || echo "")
+
+      if [ -n "$FAILED_RESOURCES" ]; then
+        # Only safe to retain resources that no longer exist. If any runtime is
+        # still present, retaining it would orphan a live, billable resource
+        # with no stack record pointing at it — strictly worse than stopping.
+        REMAINING_RUNTIMES=$(aws bedrock-agentcore-control list-agent-runtimes \
+          --region "$DELETE_REGION" \
+          --query 'agentRuntimes[].agentRuntimeId' \
+          --output text 2>/dev/null || echo "UNKNOWN")
+
+        if [ "$REMAINING_RUNTIMES" = "UNKNOWN" ]; then
+          echo "  ⚠️  Could not verify runtimes are gone (list-agent-runtimes failed)."
+          echo "     NOT retaining resources — that could orphan live runtimes."
+          echo "     Delete $AGENTCORE_STACK manually, then re-run this script."
+        elif [ -n "$REMAINING_RUNTIMES" ]; then
+          echo "  ⚠️  AgentCore runtimes still exist: $REMAINING_RUNTIMES"
+          echo "     NOT retaining resources — they must be deleted first."
+          echo "     See install_docs/errors/KNOWN_ERRORS.md (AgentCore sections)."
+        else
+          echo "  Runtimes confirmed gone. Retrying delete, retaining stale records:"
+          echo "$FAILED_RESOURCES" | sed 's/^/    - /'
+          # shellcheck disable=SC2086 # intentional word splitting into --retain-resources
+          aws cloudformation delete-stack \
+            --stack-name "$AGENTCORE_STACK" --region "$DELETE_REGION" \
+            --retain-resources $(echo "$FAILED_RESOURCES" | tr '\n' ' ') 2>/dev/null || true
+          aws cloudformation wait stack-delete-complete \
+            --stack-name "$AGENTCORE_STACK" --region "$DELETE_REGION" 2>/dev/null \
+            && echo "  Deleted (retained stale records): $AGENTCORE_STACK" \
+            || echo "  ⚠️  Still failing: $AGENTCORE_STACK — delete manually from the console"
+        fi
+      else
+        echo "  ⚠️  Failed but no DELETE_FAILED resources found: $AGENTCORE_STACK"
+        echo "     May already be deleted, or failing for another reason — check the console."
+      fi
+    fi
     echo ""
   fi
 
