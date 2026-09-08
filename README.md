@@ -79,12 +79,20 @@ Four gates must all be open. `authorizationStatus`, `entitlementAvailability`, a
 
 ```bash
 for M in anthropic.claude-opus-4-6-v1 anthropic.claude-sonnet-4-5-20250929-v1:0; do
+  S=$(aws bedrock get-foundation-model-availability --model-id "$M" \
+    --query 'agreementAvailability.status' --output text)
+  if [ "$S" = "AVAILABLE" ]; then
+    echo "Already subscribed, skipping: $M"
+    continue
+  fi
   OFFER=$(aws bedrock list-foundation-model-agreement-offers \
     --model-id "$M" --query 'offers[0].offerToken' --output text)
   echo "Subscribing: $M"
   aws bedrock create-foundation-model-agreement --model-id "$M" --offer-token "$OFFER"
 done
 ```
+
+> ℹ️ The loop skips models that are already subscribed. Running it anyway is harmless — it just returns `ValidationException: Could not create agreement - Agreement already exists`.
 
 Each status goes to `PENDING` and reaches `AVAILABLE` within a few minutes. Poll until both flip:
 
