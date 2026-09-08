@@ -1,0 +1,94 @@
+Conference Plan, Program Structure, and Logistical Arrangements: Biennial International Conference on Extracellular Vesicles in Neurological Disease Biomarker Development
+
+1. CONFERENCE OBJECTIVES
+
+The conference series has four stated objectives, each with an associated deliverable so that progress can be assessed across cycles rather than asserted.
+
+Objective 1: Revise and re-issue the consensus reporting checklist for extracellular vesicle (EV) neurological biomarker studies. Deliverable: a revised checklist published following each conference cycle, with revisions traceable to data or discussion from that cycle's working sessions.
+
+Objective 2: Conduct structured, data-based comparison of EV isolation platforms (differential ultracentrifugation, size-exclusion chromatography, polymer precipitation, immunoaffinity capture) with respect to their effect on measured cargo. Deliverable: a cross-laboratory comparison summary contributed to and reviewed by participating laboratories.
+
+Objective 3: Assemble the cross-disciplinary community required to address platform comparability — EV biologists, clinical neurologists, analytical chemists and mass spectrometrists, and biostatisticians. Deliverable: documented attendance composition across these four domains, reported against the prior cycle's baseline.
+
+Objective 4: Expand structured methodological training for graduate students and postdoctoral researchers in a subfield where such training is currently informal and laboratory-specific. Deliverable: a dedicated trainee methodology session and documented trainee attendance share, measured against the prior cycle's 34% baseline.
+
+2. PROGRAM STRUCTURE
+
+The conference is a 2.5-day meeting. The program deliberately allocates a minority of time to conventional podium presentation and a majority to structured working sessions, reflecting the prior cycle's evaluation finding that 88% of survey respondents rated methodology working sessions as the most valuable program component.
+
+Day 1 (afternoon and evening): Opening plenary establishing the current state of EV-based neurological biomarker development, followed by a session reporting adoption and observed limitations of the consensus reporting checklist issued after the prior cycle. Evening poster session with short-talk selections drawn from submitted abstracts.
+
+Day 2 (full day): Morning platform-comparison sessions, organized by isolation method rather than by disease area, in which laboratories present protocol details and paired data on the same or comparable sample types. Afternoon structured working sessions in four parallel tracks (pre-analytical handling; isolation platform comparability; cargo quantification and analytical validation; study design, statistics, and reproducibility). Each working session has a designated chair and rapporteur and produces written output for the closing session.
+
+Day 3 (morning): Trainee-focused methodology session running in parallel with a rapporteur consolidation meeting, followed by a closing plenary in which each working track presents its findings and proposed checklist revisions for discussion by the full assembly.
+
+3. PARTICIPANT RECRUITMENT AND ABSTRACT SELECTION
+
+Attendance is targeted at approximately 200 registered participants, consistent with the prior cycle's 187 and sized to preserve the working-session format that larger attendance would compromise. Abstracts are solicited through an open call and reviewed by the organizing committee, with short-talk slots selected from submitted abstracts rather than assigned solely by invitation, in order to keep the program responsive to current work in the field. The prior cycle received 94 abstracts and accepted 89; a comparable submission volume is projected.
+
+4. PUBLICIZING THE CONFERENCE TO ALL INTERESTED PARTICIPANTS
+
+The funding opportunity requires a described strategy for publicizing the conference to all interested participants. The following strategy will be used.
+
+Announcements will be distributed through the sponsoring U.S. society's full membership list and through the affiliated international society's communication channels, reaching the established EV research community directly. Because a central objective is cross-disciplinary composition, announcements will additionally be distributed to professional societies representing clinical neurology, analytical chemistry and mass spectrometry, and biostatistics, rather than relying on EV-community channels alone — the prior cycle's experience indicated that participants outside the core EV community are unlikely to encounter society-internal announcements.
+
+The open abstract call will be posted publicly rather than circulated only to prior attendees, so that investigators new to the field or new to the meeting can participate without a prior connection to the organizing committee. Registration rates will include a reduced trainee tier, and a limited number of registration fee waivers will be available by application to support attendance by trainees and by investigators from institutions with limited travel support. [Not sourced from your documents — the specific number of fee waivers, the waiver application criteria, and the specific societies and mailing lists to be used for cross-disciplinary announcement are not specified in the source material and should be finalized and named in the submitted application.]
+
+Announcements will be issued no later than six months prior to each conference date to allow attendees time to arrange travel and, where relevant, family care.
+
+5. FAMILY CARE AND CHILDCARE RESOURCES
+
+The funding opportunity requires a described strategy for identifying and publicizing resources for childcare and other types of family care at the conference site, so that individuals with family care responsibilities can attend. The following strategy will be used.
+
+Prior to each conference, the organizing committee will identify childcare options available at or near the selected conference site, including any conference-venue-provided childcare service and licensed local providers, and will compile this information into a family care resources page published on the conference website at the time registration opens — not after, so that the information is available while attendees are deciding whether they are able to attend.
+
+The family care resources page will additionally identify a designated lactation space at the venue and its location relative to session rooms, and will provide information on accessible nearby options for attendees traveling with an adult family member or dependent requiring care rather than addressing childcare only, since family care responsibilities are not limited to children.
+
+Registration materials will include an optional question allowing attendees to indicate anticipated family care needs, so the organizing committee can assess demand and adjust arrangements in advance rather than responding on site. [Not sourced from your documents — whether the organizing committee will offer direct childcare subsidies or grants to attendees, and the budget line supporting them, is not specified in the source material; note that if such support is planned it must be reflected in the categorical budget request.]
+
+6. LOGISTICAL ARRANGEMENTS
+
+Each conference cycle will be held at a venue selected to accommodate approximately 200 attendees with one plenary room, four parallel breakout rooms sized for working sessions of 40-60 participants each, and adjacent poster and catering space. Venue selection for each cycle will be finalized not less than twelve months prior to the conference date.
+
+Registration, abstract submission and review, and attendee communication will be managed through the sponsoring society's existing conference management infrastructure, which supported the prior cycle. Audio-visual support for the plenary and four breakout rooms, including capacity for remote participation by working-session members unable to travel, will be arranged through the venue or a contracted provider. [Not sourced from your documents — the specific venue, city, and vendor arrangements for each of the three proposed conference cycles are not identified in the source material; the funding opportunity requires tentative dates and locations for each future year requested, so these must be specified as concretely as possible in the submitted application.]
+
+7. MULTI-YEAR PLAN (5-year period, three conference cycles)
+
+The funding opportunity requires, for applications requesting multiple years of support, that meeting topics, tentative dates, locations, participants, and contingency plans be provided for each future year in as much detail as possible.
+
+Year 1 conference. Topic emphasis: adoption assessment and first revision of the consensus reporting checklist issued after the prior cycle, plus initial structured platform comparison across the four isolation methods. Participants: target 200 registrants across the four target disciplines, with trainee share at or above the prior cycle's 34%.
+
+Year 3 conference. Topic emphasis: cross-laboratory platform comparison using data generated by participating laboratories in the interval since Year 1, applying the Year 1 revised checklist; second checklist revision. Participants: target 200-225 registrants, with expanded clinical neurology representation if the Year 1 composition analysis indicates that domain remains underrepresented.
+
+Year 5 conference. Topic emphasis: consolidation of platform comparability findings across both prior cycles, and assessment of whether the standards have been adopted in the published literature beyond the participating laboratories. Participants: target 225 registrants.
+
+Contingency plans. Topic emphasis for Year 3 and Year 5 is explicitly contingent on Year 1 outcomes: if the Year 1 platform comparison reveals that pre-analytical handling rather than isolation platform accounts for the majority of measured cargo variability, the Year 3 working-track structure will be reweighted toward pre-analytical standardization rather than continuing an isolation-platform emphasis. If a new isolation or quantification platform achieves broad adoption during the award period, a working track will be added for it and an existing track consolidated to preserve the four-track structure and total meeting length. If attendance materially exceeds the target such that the working-session format is threatened, working sessions will be run in two rounds with participants assigned to two of four tracks rather than expanding session size beyond the 40-60 participant range.
+
+8. TIMELINE AND MILESTONES PER CONFERENCE CYCLE
+
+Month -12: Venue selected and contracted; conference dates fixed.
+Month -6: Program topics finalized; announcements distributed through society and cross-disciplinary channels; registration opens; family care resources page published concurrently with registration opening.
+Month -4: Abstract submission deadline.
+Month -3: Abstract review complete; short talks selected; preliminary program published. Safety Plan communication materials finalized for distribution to registrants.
+Month -1: Final program published; working-session chairs and rapporteurs confirmed.
+Month 0: Conference convened.
+Month +2: Post-conference evaluation survey distributed and analyzed against the prior cycle's 76% response-rate benchmark.
+Month +4: Working-session rapporteur output consolidated; revised consensus checklist circulated to participants for comment.
+Month +6: Revised checklist published; cycle outcomes reported to the sponsoring society.
+
+Key milestones and decision points: venue contracted (Month -12, go/no-go for the announced date); registration volume reviewed at Month -3 against the 200-attendee target, with the two-round working-session contingency triggered if registration materially exceeds target; revised checklist published (Month +6, the primary deliverable for the cycle).
+
+9. POTENTIAL PROBLEMS AND ALTERNATIVE STRATEGIES
+
+Potential Problem: Cross-disciplinary attendance targets are not met, and the meeting reverts to a predominantly EV-biology audience — which would undermine the platform-comparability objective that requires analytical chemistry and biostatistics participation.
+Alternative Strategy: Attendance composition will be measured at registration rather than assessed only after the meeting, so that if a target domain is underrepresented at the Month -3 checkpoint, direct invitations to identified investigators in that domain can be issued for working-session roles specifically, with the reduced-rate and fee-waiver tiers directed toward those invitations.
+
+Potential Problem: Laboratories decline to contribute unpublished paired protocol-and-data material to the platform comparison sessions out of concern about priority or about exposing unfavorable method performance.
+Alternative Strategy: Platform comparison sessions will operate under an explicit agreement that contributed comparison data are for the purpose of the consensus process and are not published outside the aggregate cross-laboratory summary without the contributing laboratory's consent, and the aggregate summary will report method effects without attributing specific unfavorable results to named laboratories.
+
+Potential Problem: Working-session output does not converge, producing four track reports without an agreed checklist revision.
+Alternative Strategy: The closing plenary is structured so that each track presents proposed revisions for full-assembly discussion rather than issuing recommendations independently, and any item that does not reach agreement is documented as an open question carried explicitly into the following cycle's agenda rather than being resolved by the organizing committee unilaterally or silently dropped.
+
+10. BUDGET STRUCTURE NOTE
+
+The budget request is submitted as a detailed categorical request using the Research & Related Budget form. Facilities and Administrative (indirect) costs are not requested, consistent with the funding opportunity's statement that F&A costs are not allowed under this mechanism. [Not sourced from your documents — specific dollar amounts by category (venue, audio-visual, trainee travel support, registration fee waivers, speaker costs, evaluation survey administration) are not provided in the source material and must be developed for the categorical budget request, in consultation with the relevant NIH Institute or Center regarding any IC-specific budget and project duration requirements.]

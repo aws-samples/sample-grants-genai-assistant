@@ -1,0 +1,101 @@
+Team Qualifications, Management Approach, and Execution Plan: Dynamic Mechanical Behavior of Additively Manufactured Metals
+
+1. AWARD TYPE AND PROPOSAL STRUCTURE
+
+This proposal is submitted against the ARL Broad Agency Announcement for Foundational Research as an Army Research Office Single Investigator award. Per the BAA, ARO's standard funding level for a Single Investigator award supports a budget for three years commensurate with a single investigator plus one or two graduate students or a postdoctoral researcher, inclusive of facilities and administrative costs. The staffing and schedule described below are scoped to that structure rather than to a larger team effort.
+
+The proposal is submitted by the institution employing the Principal Investigator, and any resulting award is made to the institution rather than to the investigator.
+
+2. PRINCIPAL INVESTIGATOR QUALIFICATIONS
+
+The Principal Investigator designed and executed the preliminary study described in the technical background, which established the core experimental capability this proposal builds on: split-Hopkinson (Kolsky) pressure bar testing with strain rate determined from measured bar signals, X-ray computed tomography defect characterization at 8 micrometer voxel resolution, high-speed digital image correlation during dynamic loading, and pre-test to post-test XCT registration enabling spatial association of localization sites with pre-existing defect features.
+
+That preliminary work produced the finding that motivates this proposal — the roughly threefold asymmetry between quasi-static and dynamic sensitivity to a lack-of-fusion defect population in L-PBF 316L — and demonstrated that the effect is measurable well above experimental scatter with the available instrumentation. The PI additionally established that the experimental approach transfers without modification to L-PBF Ti-6Al-4V, through a three-specimen screening study.
+
+[Not sourced from your documents — the PI's degree, year, institutional appointment and title, publication record, prior federal research funding history, and any prior Federal employment within the year preceding submission are not contained in the source material. All of these are required for the Biographical Sketch, which the BAA limits to three pages per investigator and which must also list up to five publications most closely related to the proposed project, up to five other significant publications, collaborators within the last four years, and the investigator's own graduate and postgraduate advisors and advisees for reviewer conflict-of-interest screening.]
+
+3. PROPOSED STAFFING AND ROLES
+
+Principal Investigator. Overall technical direction; constitutive model formulation under Objective 4; interpretation of the defect-to-localization association under Objective 3; manuscript preparation; and single point of scientific communication with the ARL Technical Point of Contact. [Not sourced from your documents — the specific level of PI effort, in months per year or percentage, is not specified in the source material and must be stated in the budget, noting the BAA's requirement that academic term salaries not be augmented for research performed during the academic term and that summer-term compensation rates not exceed academic-term rates.]
+
+Graduate Research Assistant. Primary responsibility for specimen production coordination, mechanical testing across the strain-rate range, XCT acquisition and defect population analysis, and data reduction. This role is expected to develop independent competence in dynamic mechanical characterization over the award period.
+
+Undergraduate research support, if included. Specimen preparation, metallographic sectioning, and quasi-static baseline testing. [Not sourced from your documents — whether undergraduate support is planned is not addressed in the source material. Note that if High School or Undergraduate internship support is desired, the BAA treats Army Educational Outreach Program internships as a separate modification to an existing award with its own proposal process, stipend structure, and August 31 prior-year submission timeline, and not as part of an initial Single Investigator proposal.]
+
+4. MANAGEMENT APPROACH
+
+Technical direction and internal coordination. Weekly working meetings between the PI and the graduate researcher will review measurement results, data reduction, and next-step test planning. Because the experimental matrix is sequential — defect characterization under Objective 1 sets the replicate count and specimen sizing for Objective 2, which in turn supplies the data for Objective 4 — decisions at each stage gate materially affect downstream work, and those decisions will be documented rather than made informally.
+
+Government interaction. The BAA strongly encourages a preliminary inquiry to the cognizant ARO Technical Point of Contact before submission, and encourages whitepaper submission for TPOC review prior to a full proposal. That sequence will be followed: preliminary inquiry to establish alignment with a published ARL BAA research topic and funding availability, then a whitepaper of no more than five pages as a single PDF identifying the research topic name, topic identification number, and TPOC, then the full proposal. Following award, technical interaction with the TPOC will follow whatever cadence is established in the award document.
+
+Data quality control. Strain rate will be determined from measured transmitted and reflected bar signals for every dynamic test rather than nominally assigned. A repeat of the nominally optimal process condition will be included in every build as a control, so that build-to-build variability is measured rather than assumed absent. Interstitial oxygen content will be measured on witness specimens from each Ti-6Al-4V build. Held-out process conditions for Objective 4 validation will be designated before calibration begins, not selected afterward.
+
+Reporting. The award document will specify reporting requirements, which per the BAA include at minimum monthly financial status reports, along with reports and briefing material as appropriate to document progress against program metrics, and a final report summarizing the project and tasks at the conclusion of the period of performance.
+
+5. SCHEDULE, MILESTONES, AND DECISION POINTS
+
+Year 1, first half. Build design and specimen production across the energy density range for L-PBF 316L. Multi-resolution XCT characterization to establish defect population statistics including morphology, size distribution, aspect ratio, and spatial clustering. EBSD and metallographic characterization of grain structure, cellular substructure, and texture for each condition.
+
+Milestone at end of Year 1 first half, and first decision point: defect spacing statistics compared against planned specimen dimensions to confirm the representative volume element condition. If defect spacing is comparable to specimen dimensions, replicate counts are increased accordingly and results will be reported explicitly as single-defect-population realizations rather than as bulk properties. This determination governs the entire Objective 2 test matrix and is therefore made before that matrix is executed.
+
+Year 1, second half. Quasi-static and intermediate-rate mechanical testing of 316L across all conditions. Initiation of dynamic SHPB testing. Establishment of the defect state descriptor from Objective 1 characterization data.
+
+Milestone at end of Year 1: candidate defect state descriptor defined and shown to distinguish lack-of-fusion from keyhole populations independent of total porosity.
+
+Year 2, first half. Completion of the 316L dynamic test matrix across the full strain-rate range from 10^-3 to 10^4 per second. High-speed DIC on all dynamic tests, with pre-test and post-test XCT registration on recovered specimens.
+
+Milestone: the quasi-static versus dynamic sensitivity asymmetry established or refuted with statistical confidence across the rate range for 316L. This is the central Objective 2 result.
+
+Second decision point at Year 2 midpoint: whether the defect-to-localization association observed preliminarily is supported prospectively. Localization sites are predicted from pre-test defect maps and scored against observation. If prospective prediction fails, Objective 3 is redirected from initiation-site prediction toward characterizing what else governs localization, and this redirection is reported as a substantive negative result rather than absorbed silently.
+
+Year 2, second half. Ti-6Al-4V specimen production and characterization across the energy density range. Beginning of Ti-6Al-4V mechanical testing. Quantitative fractography on recovered 316L specimens including shear band width measurement where bands are present.
+
+Year 3, first half. Completion of Ti-6Al-4V testing across strain rate. Constitutive model formulation with the defect descriptor as internal state variable, calibrated on the designated calibration subset.
+
+Year 3, second half. Blind validation of the constitutive model against the held-out process conditions for both alloys, with held-out prediction error reported rather than calibration-set fit quality. Manuscript preparation and submission. Final report.
+
+Milestone at end of Year 3: held-out prediction error quantified and reported, constituting the Objective 4 result and the basis for the TRL 2 to TRL 3 advancement claim.
+
+[Not sourced from your documents — specific calendar dates, the desired project start date, and the number of anticipated publications are not contained in the source material. The BAA notes that a desired starting date is helpful but cannot be guaranteed, and that the proposed duration should be discussed with the TPOC for the relevant research topic.]
+
+6. RISK MANAGEMENT
+
+Risk: representative volume element condition not satisfiable at standard specimen size. Likelihood moderate; impact moderate. The defect populations of interest may have spacing comparable to viable SHPB specimen dimensions, in which case individual specimens sample the population sparsely and scatter grows. Mitigation: this is tested at the first decision point before the main matrix is committed, with replicate count set from measured spacing statistics. Contingency: results reported as single-realization measurements with explicit statistical characterization of specimen-to-specimen variability, which remains a valid and publishable result, rather than as bulk property values.
+
+Risk: microstructural covariation cannot be separated from defect-population effects. Likelihood moderate; impact high, since it would undermine the central causal claim. Mitigation: EBSD and metallographic descriptors are entered jointly with the defect descriptor so the contributions are estimated together rather than one absorbing the other's effect. Contingency: if the two cannot be statistically separated within the accessible process window, that limitation is reported as a bound on the inference. This would weaken Objective 4 but would still constitute a useful and honest result about the limits of process-parameter-based prediction.
+
+Risk: the defect descriptor fails to predict held-out process conditions. Likelihood moderate; impact high for the stated Objective 4 success criterion. This is the principal scientific risk of the effort and the reason it is proposed as basic research. Mitigation: descriptor candidates are developed and compared during Year 1 rather than a single form being committed to early. Contingency: a negative held-out validation result, clearly reported alongside diagnosis of which descriptor features failed, is a legitimate scientific outcome that redirects follow-on work rather than a project failure — and is considerably more useful to the field than an unreported calibration-only fit.
+
+Risk: build quality or powder lot variability confounds the process-parameter study. Likelihood low to moderate; impact moderate. Mitigation: powder lot, layer thickness, and scan strategy held fixed within each build; nominally optimal condition repeated as a control in every build; oxygen content measured on Ti-6Al-4V witness specimens. Contingency: any build failing control comparison is treated as a separate condition rather than pooled with others.
+
+Risk: graduate researcher recruitment or continuity. Likelihood low to moderate; impact moderate given the single-student staffing structure, in which departure would materially affect schedule. [Not sourced from your documents — no recruitment timeline or continuity contingency is described in the source material; this should be addressed based on the PI's actual departmental recruiting situation.]
+
+7. FACILITIES, EQUIPMENT, AND OTHER RESOURCES
+
+The BAA requires a listing of facilities, equipment, and other resources already available to perform the research proposed. The preliminary study establishes that the essential capability set is in place and has been exercised end to end: L-PBF specimen production, XCT at 8 micrometer voxel resolution, quasi-static load frame testing, split-Hopkinson pressure bar with signal-based strain rate determination, high-speed DIC, and metallographic and EBSD characterization.
+
+[Not sourced from your documents — the specific institutional facilities, instrument makes and models, whether each capability is PI-owned or accessed through a shared user facility or core, and the arrangements and any costs for access are not identified in the source material. All of these must be specified in the Facilities, Equipment, and Other Resources section. Note also the BAA's distinction that equipment requiring purchase belongs in the budget rather than in this section, and that if facilities or equipment are requested from the Government, a justification must be submitted stating the organization's inability or unwillingness to furnish them.]
+
+Two capability needs go beyond what the preliminary study demonstrated and require confirmation: higher-resolution XCT on extracted sub-volumes to characterize the defect population below the 8 micrometer limit, and servo-hydraulic testing for the intermediate strain-rate range between quasi-static and SHPB rates. [Not sourced from your documents — availability of both capabilities is not established in the source material and should be confirmed before submission, since the Objective 2 rate sweep depends on the intermediate-rate capability and the Objective 1 sub-resolution characterization depends on the higher-resolution imaging.]
+
+8. BUDGET STRUCTURE NOTES
+
+The budget will be documented on ARO Form 99 for each year of support requested and cumulatively for the full term, with budget justification for each year and a signed summary budget page, following the BAA's instruction that prescribed budget categories not be substituted, altered, or rearranged. Costs for an institution of higher education will conform to 2 CFR Part 200. Unlike some mechanisms, facilities and administrative costs are within the scope of the standard ARO Single Investigator funding level.
+
+[Not sourced from your documents — all dollar amounts, salary and fringe rates, the institution's negotiated indirect cost rate and the date and agency of its negotiation, tuition, specimen production and characterization facility costs, and travel estimates are absent from the source material and must be developed with the institution's sponsored programs office. The BAA notes there is no page limitation for budget proposals or budget justifications, and encourages discussion with the ARO TPOC regarding appropriate budget levels for the scope of effort.]
+
+Travel will be limited to domestic conference presentation and any visits to Army laboratories that would enhance award objectives and technology transfer, which the BAA expressly permits. Separate prior ARL approval is required for any foreign travel, and none is currently anticipated.
+
+9. DATA MANAGEMENT
+
+A Data Management Plan will be submitted as a separate PDF of no more than two pages, addressing the elements the BAA enumerates: types of data and materials produced, acquisition method, time and location of acquisition where scientifically pertinent, processing approach, file formats and naming conventions, quality assurance and quality control measures during collection and analysis, dataset origin where existing resources are used, data and metadata standards, and an appropriate preservation timeframe with justification for the balance struck between preservation value and cost.
+
+Data types produced by this effort are: XCT reconstruction volumes and derived defect population statistics; EBSD and metallographic datasets; load-displacement and bar-signal traces from quasi-static, intermediate-rate, and SHPB testing; high-speed DIC image sequences and derived strain fields; fractographic imagery; and the constitutive model implementation with its calibration and held-out validation datasets separated.
+
+As fundamental research intended for open publication, the underlying datasets and the model implementation are intended for public release. [Not sourced from your documents — the specific repository, institutional storage and backup arrangements, and retention period are not established in the source material. The plan must also include the statement that data cannot be made available to the public where national security or controlled unclassified information concerns apply, in accordance with the requirements in DoD Directive 5230.09, if any such concerns are identified in consultation with the TPOC.]
+
+10. ADDITIONAL PROPOSAL COMPONENTS REQUIRED BY THE BAA
+
+For completeness, the following are required elements of the submission that are addressed in their own sections rather than here, and are noted so they are not overlooked: the Statement of Disclosure Preference on ARO Form 52A for educational and nonprofit organizations, stating any limitation on disclosure of proposal information and recognizing that restricting evaluation to Government employees may prevent review by other qualified experts in the field; the publicly releasable Project Abstract of no more than one page and 4,000 characters, which for a grant award will be posted to a public searchable website; a statement regarding possible environmental impact of the proposed effort; a statement regarding use of Class I and Class II ozone-depleting substances, or a statement that none are used; identification of any other agencies or parties receiving this proposal or funding this effort, or a statement that there are none; a bibliography of pertinent literature with complete citations; the Research and Related Senior/Key Person Profile (Expanded) form with Degree Type and Degree Year completed for all PIs and Co-PIs, and the Research and Related Personal Data form, both collected for Title IX compliance assessment; and an Organizational Conflicts of Interest mitigation plan if the applicant has any pending or current Intergovernmental Personnel Act agreement with ARL, the absence of which may result in the proposal being rejected from funding consideration.
+
+Because this proposal requests a grant or cooperative agreement rather than a procurement contract, it must be submitted electronically through Grants.gov using the Workspace system rather than by email, under Assistance Listing Number 12.431 and Funding Opportunity Number W911NF-23-S-0001, with "W911NF-23-S-0001" included in attachment titles. The BAA advises uploading at least two days before any deadline given the possibility of Grants.gov rejection, and notes that a proposal is not considered received by ARL until the authorized organization representative receives the third confirmation email.

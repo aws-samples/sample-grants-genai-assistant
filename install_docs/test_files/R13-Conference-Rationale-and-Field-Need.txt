@@ -1,0 +1,53 @@
+Conference Rationale and Field Need: Biennial International Conference on Extracellular Vesicles in Neurological Disease Biomarker Development
+
+1. CONFERENCE OVERVIEW AND SPONSORING ORGANIZATION
+
+This application requests R13 conference support for a biennial international conference on extracellular vesicles (EVs) in neurological disease biomarker development. The conference is sponsored and directed by the U.S. national society for extracellular vesicle research, an established domestic scientific society that serves as the U.S. representative organization of an international EV research society. Because the applicant organization is a domestic established scientific society acting as the U.S. representative body, it is eligible to seek support for an international conference under this mechanism; the application is submitted by the organization, not by an individual investigator.
+
+Support is requested for a 5-year period covering three conference cycles (Year 1, Year 3, Year 5), consistent with a permanently sponsoring organization proposing a recurring biennial series.
+
+2. THE SCIENTIFIC PROBLEM THE CONFERENCE ADDRESSES
+
+Extracellular vesicles — including exosomes and microvesicles — carry protein, lipid, and nucleic acid cargo across the blood-brain barrier and have emerged as a candidate source of minimally invasive biomarkers for neurological disease, including neurodegenerative disease, traumatic brain injury, and neuroinflammatory conditions. The appeal is direct: a blood draw that reports on central nervous system pathology would substantially reduce reliance on lumbar puncture and PET imaging, both of which limit the scale and diversity of study populations that can realistically be enrolled.
+
+The obstacle is not conceptual interest but methodological fragmentation. EV isolation can be performed by differential ultracentrifugation, size-exclusion chromatography, polymer-based precipitation, or immunoaffinity capture, and these methods do not yield equivalent vesicle populations. Downstream cargo quantification is similarly heterogeneous across laboratories. The consequence is a literature in which nominally comparable studies report divergent biomarker concentrations and effect directions, and in which independent replication of a promising candidate marker is frequently unsuccessful for reasons that cannot be distinguished from methodological difference alone. This is a coordination problem, and coordination problems are addressed by convening the field — not by any single laboratory's additional experiment.
+
+3. WHY A CONFERENCE IS THE APPROPRIATE MECHANISM
+
+Three features of this problem make a recurring, structured meeting the appropriate response rather than an individual research award.
+
+First, the core need is cross-laboratory methodological consensus. Establishing which pre-analytical and isolation variables materially affect measured EV cargo requires laboratories using different platforms to compare protocols and data directly, in a setting designed for structured comparison rather than sequential podium presentations.
+
+Second, the relevant expertise is distributed across communities that do not routinely meet together: vesicle biologists and biochemists focused on EV composition, clinical neurologists and neuropsychologists defining disease phenotypes, analytical chemists and mass spectrometrists developing quantification platforms, and biostatisticians concerned with reproducibility and multiple-comparison burden in high-dimensional biomarker discovery. General neuroscience meetings and general EV meetings each capture a portion of this group; neither reliably assembles all of it.
+
+Third, methodological standards require periodic revision as platforms evolve. A biennial cadence — rather than a single one-time workshop — allows recommendations issued at one cycle to be tested by participating laboratories and revisited with data at the next, which is the mechanism by which consensus recommendations become durable rather than aspirational.
+
+4. RELATED CONFERENCES HELD DURING THE PAST 3 YEARS
+
+Three categories of related meetings have been held in the past three years, and the proposed conference is deliberately positioned relative to each.
+
+The sponsoring international society's general annual meeting covers extracellular vesicle biology across all disease areas and basic biology, with attendance in the low thousands. It is broad by design; neurological disease biomarker development typically occupies a small number of concurrent sessions. The proposed conference is narrower in scientific scope and substantially smaller in attendance, which is what permits the structured protocol-comparison format described in the Conference Plan. It is not a competing general meeting and is scheduled in alternate years to avoid conflict.
+
+Large general neuroscience and neurology society annual meetings have included EV-related sessions and posters during this period. These meetings reach a clinical neurology audience effectively but do not assemble the analytical chemistry and EV isolation methodology expertise required to resolve the platform-comparability questions at issue, and their scale precludes small-group methodological working sessions.
+
+A limited number of single-topic EV methodology workshops have been convened during this period, typically as one-time events focused on a specific isolation technique or platform. These have been valuable but narrow: they address one method rather than the comparison across methods, and being one-time events they provide no mechanism for revisiting recommendations against subsequently generated data. [Not sourced from your documents — the specific names, organizers, dates, and attendance figures for the related conferences described in this section are not provided in the source material and must be identified explicitly by name and date in the submitted application, as the funding opportunity requires identification of related conferences held during the past 3 years.]
+
+The proposed conference is therefore distinguished by the combination of a narrow disease-and-application focus, deliberate cross-disciplinary composition, a working-session format oriented toward protocol comparison, and a recurring biennial structure that supports iterative refinement of recommendations.
+
+5. TRACK RECORD OF THE PRIOR CONFERENCE CYCLE
+
+A prior cycle of this conference was convened by the sponsoring organization without federal conference support and provides the basis for the projections in this application.
+
+That meeting drew 187 registered attendees from 14 countries, including 63 trainees (graduate students and postdoctoral researchers), representing 34% of total attendance. Ninety-four abstracts were submitted and 89 accepted for poster or short-talk presentation. A post-conference evaluation survey was completed by 142 of 187 attendees (76% response rate); of respondents, 88% rated the structured methodology working sessions as the most valuable component of the program, and 71% indicated they would modify at least one element of their laboratory's EV isolation or reporting protocol as a result of discussion at the meeting.
+
+The prior cycle also produced a consensus reporting checklist for EV neurological biomarker studies, drafted during the meeting's working sessions and circulated to participants for comment afterward. That checklist is the direct predecessor of the multi-cycle standardization objective described in the Conference Plan: the proposed Year 1 conference will assess adoption of the checklist and revise it against data contributed by participating laboratories.
+
+6. EXPECTED IMPACT
+
+Successful execution of this conference series is expected to produce three outcomes. First, a periodically revised, community-endorsed set of minimum reporting and pre-analytical handling standards for EV-based neurological biomarker studies, with each revision informed by data generated between cycles rather than by expert opinion alone. Second, a documented cross-laboratory comparison of isolation platform effects on measured cargo, which would allow published discrepancies to be interpreted in light of method rather than attributed ambiguously to biology or to irreproducibility. Third, an expanded and better-connected trainee cohort in a subfield where methodological training is currently acquired informally within individual laboratories.
+
+The broader effect, if the series succeeds, is that replication failure in this literature becomes interpretable — investigators would be able to determine whether a failed replication reflects a methodological difference or a genuine absence of the reported effect. That distinction is currently difficult to draw, and it is the principal barrier to advancing any EV-based candidate marker toward clinical qualification.
+
+7. WHAT THIS CONFERENCE SERIES CHALLENGES
+
+The prevailing implicit assumption in this literature is that EV isolation method is a technical implementation detail, reportable in a methods section and otherwise not material to cross-study interpretation. The premise of this conference series is the opposite: that isolation and pre-analytical handling choices are first-order determinants of measured results and must be treated as primary experimental variables. Organizing a recurring meeting around structured, data-based comparison across platforms — rather than around presentation of individual laboratories' findings — follows directly from that premise and is the principal way this conference differs in kind, not merely in topic, from the related meetings described above.

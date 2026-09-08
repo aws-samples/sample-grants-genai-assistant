@@ -1,0 +1,106 @@
+Technical Background and Preliminary Data: Process-Induced Defect Populations and the Dynamic Mechanical Response of Additively Manufactured Metals
+
+1. RESEARCH FOCUS AND SCIENTIFIC PROBLEM
+
+My research program investigates how process-induced defect populations and solidification microstructure in laser powder bed fusion (L-PBF) metals govern mechanical behavior at high strain rates — specifically the regime from 10^3 to 10^4 per second that characterizes impulsive and impact loading. The central scientific question is whether the relationship between manufacturing process parameters, the resulting internal defect population, and dynamic strength can be established quantitatively and predictively, rather than treated as empirical batch-to-batch variability.
+
+This is basic research (budget activity 6.1) directed at increasing fundamental understanding of a deformation-and-failure mechanism. It is not a component qualification effort, a hardware demonstration, or an incremental process-optimization study. The intended outcome is physical understanding and a validated constitutive description, not a fielded article.
+
+2. WHY THE PROBLEM IS SCIENTIFICALLY OPEN
+
+Additively manufactured metals have been characterized extensively under quasi-static loading, and quasi-static property databases for L-PBF 316L stainless steel and Ti-6Al-4V are now reasonably mature. The dynamic regime is considerably less resolved, and the gap is not merely one of missing data points.
+
+The mechanistic reason is that defects do not penalize quasi-static and dynamic response equivalently. Under quasi-static loading, plastic deformation has time to redistribute around an internal void; the material accommodates the defect through diffuse plasticity, and the measured yield strength is degraded roughly in proportion to the load-bearing area lost. Under dynamic loading, deformation localizes: stress concentrations at defects can nucleate failure before diffuse accommodation occurs, and localization is further promoted by adiabatic heating, since the deformation is fast enough to be effectively adiabatic rather than isothermal. The consequence is that a defect population which is nearly benign quasi-statically may be substantially more damaging dynamically. This asymmetry is physically expected but has not been quantified in a way that connects back to controllable process parameters.
+
+A second open question concerns defect morphology and spatial arrangement rather than defect volume fraction alone. Lack-of-fusion porosity produced at low volumetric energy density is irregular, often flattened, and tends to be arranged along layer boundaries. Keyhole porosity produced at high energy density is more nearly spherical and more randomly distributed. These two populations can present similar total porosity by volume while presenting very different stress-concentration severity and very different spatial clustering. Total porosity, the metric most commonly reported, is therefore a poor state descriptor for predicting dynamic failure — but no better descriptor has been established and validated.
+
+Third, the constitutive models in general use for dynamic metal plasticity — Johnson-Cook and Zerilli-Armstrong forms — were developed and calibrated for wrought material and carry no internal state variable representing a defect population. Applying them to AM material requires recalibrating fitting constants for every process condition, which provides no predictive capability for a process condition not already tested.
+
+3. PRELIMINARY DATA
+
+3.1 Specimen Set and Process Conditions
+
+A preliminary study was completed on 12 L-PBF 316L stainless steel specimens produced at three volumetric energy density conditions — 55, 75, and 95 J/mm^3 — with four specimens per condition. The three conditions were selected to deliberately span the process window: 55 J/mm^3 in the lack-of-fusion regime, 75 J/mm^3 near the nominally optimal condition, and 95 J/mm^3 in the keyhole regime. All specimens were produced in a single build with identical powder lot, layer thickness, and scan strategy, so that energy density was the only intentionally varied parameter.
+
+3.2 Defect Characterization
+
+Each specimen was characterized by X-ray computed tomography (XCT) at 8 micrometer voxel resolution prior to mechanical testing. Measured porosity by volume was 1.8 percent at 55 J/mm^3, 0.4 percent at 75 J/mm^3, and 0.9 percent at 95 J/mm^3. Consistent with expectation, the 55 J/mm^3 population was morphologically irregular with a high aspect ratio and showed preferential arrangement along layer interfaces, while the 95 J/mm^3 population was more nearly spherical and more uniformly distributed through the volume.
+
+An important limitation of this characterization is that XCT at 8 micrometer voxel resolution cannot resolve defects below roughly 15-20 micrometers with confidence. The reported porosity values are therefore lower bounds, and any sub-resolution defect population is unmeasured. This limitation directly motivates the multi-resolution characterization approach described in the proposed work.
+
+3.3 Quasi-Static and Dynamic Mechanical Response
+
+Quasi-static compression testing was performed at a nominal strain rate of 10^-3 per second. Dynamic compression testing was performed on a split-Hopkinson (Kolsky) pressure bar at a measured strain rate of 2.1 x 10^3 per second, with strain rate determined from the transmitted and reflected bar signals rather than assumed.
+
+At 75 J/mm^3 (0.4 percent porosity), quasi-static yield strength was approximately 470 MPa and dynamic flow stress at 5 percent strain was approximately 690 MPa, indicating substantial positive strain-rate sensitivity. For comparison, a wrought 316L reference specimen tested under identical dynamic conditions gave a dynamic flow stress of approximately 640 MPa — that is, the near-optimal AM condition modestly exceeded wrought performance, plausibly attributable to the fine cellular solidification substructure characteristic of L-PBF processing.
+
+The central preliminary finding concerns the 55 J/mm^3 condition. Relative to the 75 J/mm^3 condition, its quasi-static yield strength was lower by approximately 8 percent — a modest penalty roughly consistent with the additional 1.4 percent porosity. Its dynamic flow stress, however, was lower by approximately 23 percent. The defect population thus imposed a disproportionately larger penalty under dynamic loading than under quasi-static loading, by roughly a factor of three in relative terms. The 95 J/mm^3 condition, despite carrying more than twice the porosity of the 75 J/mm^3 condition, showed a dynamic penalty of only about 7 percent, consistent with its more spherical and less severely stress-concentrating defect morphology.
+
+Taken together these results support the hypothesis that defect morphology and arrangement, not total porosity, control the dynamic penalty — and they establish that the penalty is measurable with the available instrumentation at a magnitude well above experimental scatter.
+
+3.4 Failure Localization Observations
+
+High-speed digital image correlation (DIC) was applied during dynamic testing at a frame rate sufficient to resolve strain field evolution over the loading pulse. In the 55 J/mm^3 specimens, strain localization was observed to initiate preferentially in regions that post-test XCT registration associated with layer-boundary defect clusters. This is a qualitative observation from a small specimen set and is not offered as established mechanism; it is the specific observation that motivates Objective 3 of the proposed work.
+
+Post-mortem fractography was performed on failed specimens. [Not sourced from your documents — quantitative fractographic measurements, such as void coalescence spacing or measured adiabatic shear band widths, were not completed in the preliminary study and would need to be generated during the proposed effort.]
+
+3.5 Ti-6Al-4V Preliminary Screening
+
+Three L-PBF Ti-6Al-4V specimens were produced and tested to confirm that the experimental approach transfers to a second alloy system with markedly different thermophysical properties and a different failure character. The specimens were successfully processed, characterized, and tested without modification to the experimental method. The specimen count is too small to support any quantitative conclusion about strain-rate sensitivity or defect sensitivity in this alloy, and no such conclusion is drawn here.
+
+4. TECHNICAL OBJECTIVES OF THE PROPOSED WORK
+
+Objective 1 — Establish a quantitative mapping from process parameters to defect population state. Produce L-PBF 316L and Ti-6Al-4V across a controlled volumetric energy density range and characterize the resulting defect populations by morphology, size distribution, aspect ratio, and spatial clustering statistics, using multi-resolution XCT to address the sub-resolution limitation identified above. Success criterion: a defect state descriptor that distinguishes lack-of-fusion from keyhole populations independent of total porosity.
+
+Objective 2 — Quantify the dynamic-versus-quasi-static defect sensitivity asymmetry across strain rates spanning 10^-3 to 10^4 per second. Extend the preliminary single-rate measurement to a full rate sweep for both alloys and both defect regimes. Success criterion: the asymmetry ratio observed preliminarily (roughly a factor of three for the lack-of-fusion condition) established or refuted with statistical confidence across the rate range.
+
+Objective 3 — Identify the mechanism linking defect morphology and spatial clustering to failure localization and adiabatic shear band initiation. Combine high-speed DIC, pre-test and post-test XCT registration, and quantitative fractography to establish whether localization initiation sites correlate with defect clusters and, if so, what geometric feature of the cluster governs initiation. Success criterion: a testable, quantitative initiation criterion rather than a qualitative association.
+
+Objective 4 — Develop and validate a defect-population-informed constitutive description. Extend a Johnson-Cook or Zerilli-Armstrong form with an internal state variable representing the defect descriptor from Objective 1. Success criterion: prediction of dynamic flow and failure response for a process condition held out of the calibration set, to within a stated error bound.
+
+Technology readiness: the effort begins at TRL 2, in that the underlying physical concept is formulated and supported by preliminary measurement but not yet established mechanistically, and targets TRL 3 — analytical and experimental proof of the critical characteristic, namely the validated predictive link from process condition to dynamic response. Claims beyond TRL 3 would not be credible for a three-year single-investigator basic research effort and are not made.
+
+5. TECHNICAL APPROACH
+
+5.1 Specimen Production and Process Control
+
+Specimens will be produced by L-PBF with volumetric energy density varied systematically across the lack-of-fusion, nominally optimal, and keyhole regimes for each alloy. Powder lot, layer thickness, and scan strategy will be held fixed within each build, and build-to-build reproducibility will be verified by including a repeat of the nominally optimal condition in every build as a control. This control-per-build design is a direct response to the recognition that build-to-build variability is a plausible confound for any process-parameter study.
+
+5.2 Multi-Resolution Defect Characterization
+
+Defect populations will be characterized by XCT at the 8 micrometer voxel resolution already demonstrated, supplemented by higher-resolution imaging on extracted sub-volumes to quantify the defect population below the 8 micrometer limit. Metallographic sectioning and electron backscatter diffraction (EBSD) will characterize grain structure, cellular substructure scale, and crystallographic texture, since these vary with energy density alongside the defect population and must be separated from it as an explanatory variable rather than conflated with it.
+
+5.3 Mechanical Testing Across Strain Rate
+
+Quasi-static testing will use a conventional screw-driven load frame at rates from 10^-3 to 10^-1 per second. Intermediate rates will be accessed by a servo-hydraulic frame. Dynamic rates from approximately 10^3 to 10^4 per second will use the split-Hopkinson pressure bar, with strain rate measured from bar signals in every test rather than nominally assigned. Specimen geometry will be selected to satisfy the standard requirements for valid SHPB measurement, namely stress-state uniformity and inertial-effect minimization.
+
+5.4 Localization Diagnostics
+
+Dynamic tests will be instrumented with high-speed DIC for full-field strain evolution. Specimens will be XCT-scanned before testing and, where they survive without full fragmentation, after testing, and the two scans registered so that observed localization sites can be spatially associated with pre-existing defect features. Recovered specimens will be sectioned for quantitative fractography, including measurement of shear band width where bands are present.
+
+5.5 Constitutive Model Development and Validation
+
+The defect descriptor from Objective 1 will be incorporated as an internal state variable in a Johnson-Cook or Zerilli-Armstrong constitutive form. Calibration will use a designated subset of process conditions, with at least one condition per alloy held out entirely from calibration and reserved for blind validation. Reporting the held-out prediction error, rather than the calibration-set fit quality, is the honest test of predictive capability and is what will be reported.
+
+6. SCIENTIFIC UNCERTAINTIES AND APPROACHES TO RESOLUTION
+
+Uncertainty: whether the SHPB specimen volume constitutes a representative volume element for the defect population. If defect spacing is comparable to specimen dimensions, individual specimens sample the defect population sparsely and scatter will be large. Resolution approach: defect spacing statistics from Objective 1 will be compared against specimen dimensions before the main test matrix is executed; replicate count per condition will be set from the measured spacing statistics rather than fixed a priori, and if the representative-volume condition cannot be satisfied at standard specimen size, results will be interpreted and reported explicitly as single-defect-population realizations rather than as bulk properties.
+
+Uncertainty: whether microstructural changes accompanying energy density variation can be separated from defect-population effects. Cellular substructure scale, grain morphology, and texture all vary with energy density. Resolution approach: EBSD and metallographic characterization of every condition allows microstructural descriptors to be entered alongside the defect descriptor in the constitutive treatment, so that the two contributions are estimated jointly rather than one being attributed the other's effect. Where the two cannot be statistically separated within the available conditions, that will be reported as a limitation on the inference rather than resolved by assumption.
+
+Uncertainty: whether the observed localization-defect association is causal. The preliminary DIC observation is correlational and drawn from a small specimen set. Resolution approach: pre-test XCT registration allows the association to be tested prospectively — localization sites can be predicted from pre-test defect maps and the predictions scored against observation, which is a considerably stronger test than post hoc association.
+
+Uncertainty: oxygen pickup and alpha-case formation in Ti-6Al-4V, which would alter dynamic response through a mechanism unrelated to the defect population under study. Resolution approach: interstitial oxygen content will be measured on witness specimens from each build, and any build exceeding the specification will be treated as a separate condition rather than pooled.
+
+7. RELATIONSHIP TO PRIOR WORK
+
+The split-Hopkinson pressure bar technique derives from Kolsky's original formulation and its subsequent refinement for metal plasticity measurement, including the systematic treatment of pulse shaping and stress-state validity conditions developed by Follansbee, Gray, and coworkers. The Johnson-Cook and Zerilli-Armstrong constitutive forms this work proposes to extend are the established phenomenological and dislocation-mechanics-based descriptions respectively for rate- and temperature-dependent metal plasticity. Adiabatic shear localization as a dynamic failure mode has an extensive literature basis independent of additive manufacturing.
+
+The specific contribution proposed here is the connection of that established dynamic-mechanics framework to the process-induced defect populations characteristic of L-PBF material, with the defect population treated as a measured and modeled state variable rather than as unexplained scatter. [Not sourced from your documents — specific citations for the prior work summarized in this section were not compiled in the source material and must be assembled into the required Bibliography, with complete citation information, before submission.]
+
+8. NOVEL CONTRIBUTIONS
+
+- Quantification of the asymmetry between quasi-static and dynamic sensitivity to process-induced defects, established across strain rate rather than at a single rate, for two alloy systems with distinct thermophysical behavior.
+- A defect state descriptor based on morphology and spatial clustering rather than total porosity, tested for its ability to predict dynamic response where total porosity demonstrably fails to.
+- Prospective, registration-based testing of the defect-to-localization initiation association, rather than post hoc correlation.
+- A constitutive description carrying an explicit defect-population state variable, validated against held-out process conditions rather than only against its own calibration set.

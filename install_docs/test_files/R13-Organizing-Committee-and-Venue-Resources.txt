@@ -1,0 +1,65 @@
+Organizing Committee, Sponsoring Organization, and Conference Resources: Biennial International Conference on Extracellular Vesicles in Neurological Disease Biomarker Development
+
+1. SPONSORING ORGANIZATION AND ELIGIBILITY
+
+The applicant organization is the U.S. national society for extracellular vesicle research, an established domestic scientific society that serves as the U.S. representative organization of an affiliated international extracellular vesicle (EV) research society. This structure is directly relevant to eligibility under this mechanism: the funding opportunity limits eligibility to domestic institutions and organizations including established scientific or professional societies, excludes foreign institutions, and permits support of an international conference only through the U.S. representative organization of an established international scientific or professional society. The application is submitted by the organization, not by an individual, consistent with the requirement that an individual is not eligible to receive a conference grant award.
+
+[Not sourced from your documents — the legal name, incorporation status, tax status, and formal documentation of the society's designation as U.S. representative organization of the affiliated international society are not provided in the source material and must be documented directly in the submitted application, as this designation is the basis for eligibility to support an international conference under this mechanism.]
+
+2. ORGANIZATIONAL CAPACITY AND PRIOR CONFERENCE EXPERIENCE
+
+The sponsoring society convened the prior cycle of this conference without federal conference support, providing direct evidence of organizational capacity. That meeting hosted 187 registered attendees from 14 countries, processed 94 submitted abstracts with 89 accepted, administered a post-conference evaluation survey achieving a 76% response rate (142 of 187 attendees), and produced a consensus reporting checklist that was drafted in working sessions and circulated to participants for comment following the meeting.
+
+The society's existing conference management infrastructure — used for registration, abstract submission and review, and attendee communication in the prior cycle — will support the proposed conference series without requiring new systems to be established. [Not sourced from your documents — the specific conference management platform used and whether the society employs dedicated meetings staff or contracts this function are not identified in the source material and should be described in the submitted application to substantiate organizational capacity.]
+
+3. ORGANIZING COMMITTEE STRUCTURE
+
+The organizing committee is responsible for program topic selection, abstract review, short-talk selection, and designation of working-session chairs and rapporteurs. Because committee members help determine who speaks and participates, they constitute a significant element of the conference for purposes of this mechanism.
+
+The committee is structured to reflect the four target disciplines the conference is designed to convene: EV biology and biochemistry, clinical neurology, analytical chemistry and mass spectrometry, and biostatistics and reproducibility methodology. This composition is deliberate rather than incidental — the platform-comparability objective cannot be executed by a committee drawn from EV biology alone, since the questions at issue are substantially analytical and statistical.
+
+Each of the four working tracks has a designated chair drawn from the corresponding discipline and a rapporteur responsible for producing written track output for the closing plenary and the subsequent checklist revision.
+
+[Not sourced from your documents — the names, institutional affiliations, and specific roles of individual organizing committee members are not provided in the source material and must be specified in the submitted application, including identification of which members are senior/key personnel.]
+
+4. INTERNATIONAL COLLABORATION CONSIDERATIONS
+
+Because organizing committee members who help determine who speaks or participates are considered a significant element for conference grants — regardless of whether a publication is planned and regardless of whether the member is listed as senior/key personnel — any organizing committee member from a foreign country constitutes an international collaboration for purposes of this application.
+
+Given that the prior cycle drew attendees from 14 countries and that the conference is affiliated with an international society, foreign organizing committee participation is expected. The application will therefore follow the instructions applicable to applications with international collaborators. [Not sourced from your documents — the specific foreign organizing committee members, their countries and institutions, and the corresponding documentation required under the applicable NIH guide notice for international collaborators (NOT-OD-25-098, referenced in the funding opportunity) are not provided in the source material and must be identified and documented in the submitted application.]
+
+5. CONFERENCE VENUE AND PHYSICAL RESOURCES
+
+Each conference cycle requires a venue accommodating approximately 200-225 attendees with: one plenary room seating full attendance; four parallel breakout rooms each sized for working sessions of 40-60 participants; adjacent poster display space sufficient for approximately 90 posters, consistent with the prior cycle's 89 accepted abstracts; and catering space supporting the meeting's schedule.
+
+Audio-visual requirements include presentation support in the plenary and all four breakout rooms, with capacity for remote participation by working-session members unable to travel — relevant given the international participant base and the objective of retaining cross-disciplinary members who may face travel constraints.
+
+Venue selection for each cycle is scheduled to be finalized not less than twelve months prior to the conference date. [Not sourced from your documents — the specific venues, cities, and contracted dates for each of the three proposed conference cycles are not identified in the source material; the funding opportunity requires tentative dates and locations for each future year requested, so these must be provided as concretely as possible.]
+
+6. FAMILY CARE RESOURCES AT THE CONFERENCE SITE
+
+Identification of childcare and other family care resources at each selected conference site is assigned to the organizing committee as a pre-conference deliverable, with the resulting family care resources page published on the conference website concurrently with the opening of registration. Venue selection criteria include availability of a designated lactation space and the availability of licensed childcare options at or near the site, so that family care feasibility is a factor in venue choice rather than a constraint discovered afterward.
+
+7. SAFETY PLAN AND CODE OF CONDUCT INFRASTRUCTURE
+
+A Plan to Promote Safe Environments is required as Just-In-Time material should this application be recommended for funding. The sponsoring organization's capacity to execute this requirement rests on the following infrastructure.
+
+A conference code of conduct stating expectations of behavior, including an enumeration of behaviors considered harassing (with specific attention to sexual, racial, and ethnic harassment), will be published on the conference website and included in registration materials, so that it is accessible to all attendees prior to and during the meeting.
+
+A confidential reporting pathway will be designated, with named points of contact within the organizing committee identified in the code of conduct and in the on-site program, together with a described process by which the organizers will assess allegations and the consequences applicable to individuals found to violate the expectations of behavior — up to and including removal from the conference.
+
+Materials distributed to attendees will additionally explain that individuals with questions, concerns, or complaints related to harassment may contact the conference organizer or the HHS Office for Civil Rights; how to file a complaint with HHS OCR; that filing a complaint with the conference organizer is not a prerequisite to filing a complaint of discrimination with HHS OCR and that seeking assistance from the organizer does not prohibit filing with OCR; and how individuals may notify NIH of concerns regarding harassment, discrimination, or other inappropriate conduct at NIH-supported conferences.
+
+The Just-In-Time submission will additionally describe the strategy for communicating the Safety Plan to attendees and the plan for documenting allegations and resulting actions, together with the steps organizers will take to ensure a safe and respectful environment free from discrimination and harassment.
+
+[Not sourced from your documents — the named individuals serving as confidential reporting contacts, whether personnel trained in advocacy and counseling will be available on site, whether referrals to legal or health care resources will be arranged, and whether a conference climate survey will be administered are not specified in the source material and should be determined and documented, as these are among the strategies identified in the funding opportunity for preventing and mitigating harassment.]
+
+8. ACKNOWLEDGEMENT OF NIH SUPPORT
+
+As a term and condition of a conference grant award, all conference material — promotional materials, agenda, and publications on internet sites — will include acknowledgement of NIH grant support, together with the required disclaimer stating that funding was made possible in part by the awarded grant number from the awarding Institute or Center, and that views expressed in written conference materials or publications and by speakers and moderators do not necessarily reflect the official policies of the Department of Health and Human Services, nor does mention of trade names, commercial practices, or organizations imply endorsement by the U.S. Government.
+
+Responsibility for inserting this acknowledgement and disclaimer into the conference website, program, and promotional materials is assigned to the organizing committee as part of the Month -3 preliminary program publication milestone.
+
+9. EVALUATION AND REPORTING CAPACITY
+
+The post-conference evaluation survey administered in the prior cycle (76% response rate) provides both the instrument and the response-rate benchmark for evaluating each proposed cycle. Evaluation results, working-session rapporteur output, and the revised consensus checklist are reported to the sponsoring society following each cycle, providing the documentation basis for assessing whether the conference series is meeting its stated objectives across cycles rather than only within a single meeting.

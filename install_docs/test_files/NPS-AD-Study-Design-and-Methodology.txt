@@ -1,0 +1,74 @@
+Study Design and Methodology: Biobehavioral Characterization of the Locus Coeruleus-Noradrenergic Pathway in Neuropsychiatric Symptoms of Alzheimer's Disease
+
+1. OVERALL STUDY DESIGN
+
+This is a prospective, observational, mechanistic study. No intervention, treatment, or investigational product is assigned. This application is submitted as R21 Clinical Trial Optional and this specific project does NOT involve a clinical trial: participants are characterized using biomarker and behavioral measures only, with no randomization, treatment assignment, or manipulation of any independent variable. The study combines a peripheral biomarker panel of noradrenergic tone with continuous, objective behavioral monitoring to test whether locus coeruleus-noradrenergic (LC-NA) pathway dysfunction is differentially associated with specific neuropsychiatric symptom (NPS) domains in Alzheimer's disease.
+
+2. SPECIFIC AIMS
+
+Aim 1: Determine the cross-sectional association between an expanded peripheral noradrenergic biomarker panel (salivary alpha-amylase, plasma normetanephrine, and heart rate variability-derived sympathetic/parasympathetic balance) and caregiver-reported NPS domain scores (apathy, agitation/aggression, anxiety) in a sample of 80 participants with probable AD dementia.
+
+Aim 2: Determine whether continuous, objective behavioral monitoring — 14-day wrist actigraphy plus a validated passive smartphone/tablet-based digital phenotyping approach capturing movement and social interaction patterns in participants with a caregiver-managed device — provides NPS-domain-specific information that is not captured by caregiver-report instruments alone, and characterize the relationship between these objective behavioral measures and the noradrenergic biomarker panel from Aim 1.
+
+Aim 3: Test whether combining the noradrenergic biomarker panel and objective behavioral measures improves domain-specific NPS characterization (particularly for apathy, which showed no clear association with the single pilot biomarker) compared to either measurement approach alone.
+
+3. STUDY POPULATION
+
+3.1 Sample Size and Power
+
+Target enrollment is 80 participants with a clinical diagnosis of probable AD dementia (mild to moderate stage, Clinical Dementia Rating 0.5-2), recruited from the same outpatient memory clinic used in the pilot study. [Not sourced from your documents — the exact power calculation parameters, including assumed effect size, target power (e.g., 80%), and correction for multiple NPS domain comparisons, are illustrative and should be finalized with a biostatistician using the pilot effect sizes as the basis for the calculation.] A sample of 80 represents approximately a 3.6-fold increase over the pilot (n=22), intended to provide adequate power to resolve the apathy-biomarker association that was not detected in the underpowered pilot sample, while remaining appropriately scoped for the R21 mechanism-focused, exploratory funding mechanism.
+
+3.2 Inclusion and Exclusion Criteria
+
+Inclusion: clinical diagnosis of probable AD dementia; CDR 0.5-2; presence of an involved caregiver able to complete caregiver-report instruments and assist with actigraphy/digital device use; ability to provide informed consent or, where cognitive impairment precludes independent consent, appropriate assent with caregiver/legally authorized representative consent per institutional policy.
+
+Exclusion: current use of medications with strong direct noradrenergic agonist or antagonist activity (e.g., certain alpha/beta-adrenergic medications prescribed for indications other than AD, which would confound the peripheral noradrenergic biomarker panel) at a stable, unavoidable dose — participants on such medications for medically necessary indications will be retained but medication status will be included as a covariate rather than used as a hard exclusion, to avoid unnecessarily restricting generalizability; diagnosed primary psychiatric disorder (e.g., schizophrenia, bipolar disorder) predating the AD diagnosis, to avoid confounding NPS attribution; currently enrolled in an interventional clinical trial for a neuropsychiatric or cognitive indication.
+
+4. DATA COLLECTION PROCEDURES
+
+4.1 Neuropsychiatric Symptom Assessment
+
+The Neuropsychiatric Inventory (NPI), administered to the primary caregiver at a single baseline timepoint, provides domain-specific scores for apathy, agitation/aggression, anxiety, and other NPS domains, consistent with the instrument and administration approach validated in the pilot study.
+
+4.2 Peripheral Noradrenergic Biomarker Panel
+
+Morning salivary alpha-amylase will be collected using the same validated enzymatic kinetic assay protocol used in the pilot. This panel will be expanded beyond the pilot to include plasma normetanephrine (a more direct peripheral marker of noradrenergic turnover than the indirect sympathetic marker used alone in the pilot) from a single morning blood draw, and heart rate variability metrics reflecting autonomic (including sympathetic/noradrenergic-associated) balance, derived from a brief resting ECG recording collected during the same visit.
+
+4.3 Objective Behavioral Monitoring
+
+Wrist actigraphy will be worn continuously for 14 days (extended from the pilot's 7-day protocol to improve stability of the rest-activity rhythm metrics, particularly intradaily variability, which benefits from a longer observation window), using the same device and wear protocol validated in the pilot's 94% compliance result. In addition, a passive digital phenotyping approach using a caregiver-managed tablet or smartphone application will passively log movement patterns and caregiver-logged social interaction events over the same 14-day period, providing a complementary, non-wearable-dependent behavioral data stream, particularly relevant for participants who may have difficulty tolerating continuous wrist-worn device use.
+
+5. DATA ANALYSIS PLAN
+
+Aim 1: Multivariable linear regression models with each NPI domain score as the dependent variable and each biomarker (salivary alpha-amylase, plasma normetanephrine, heart rate variability sympathetic/parasympathetic ratio) as predictors, adjusting for age, sex, dementia severity (CDR), and relevant medication covariates identified above. Given the pilot's positive agitation association and null apathy association, this aim is specifically powered to resolve whether the expanded three-marker panel improves detection of an apathy-specific signal that the single pilot marker did not detect.
+
+Aim 2: Actigraphy-derived intradaily variability and digital phenotyping-derived movement/social interaction metrics will be analyzed as predictors of NPI domain scores using the same regression framework as Aim 1, and compared directly (via model fit comparison) against the Aim 1 biomarker-only models to test whether objective behavioral measures explain NPS domain variance not captured by peripheral biomarkers alone — directly extending the pilot's preliminary finding that actigraphy explained agitation variance at least as well as the single peripheral marker.
+
+Aim 3: Combined models incorporating both the noradrenergic biomarker panel and the objective behavioral measures will be compared against each single-measurement-type model (Aim 1 alone, Aim 2 alone) using standard model comparison metrics, testing whether the combined biobehavioral approach specifically improves characterization of NPS domains — apathy in particular — that were not well captured by either single measurement type in the pilot.
+
+6. TIMELINE AND MILESTONES (R21, 2-year period, organized by 6-month intervals)
+
+Months 1-6: IRB approval, staff training on expanded biomarker panel (plasma normetanephrine collection and processing, resting ECG protocol) and digital phenotyping device deployment, data collection infrastructure setup.
+
+Months 7-12: Enrollment and baseline data collection begins; target 50% of enrollment (40 participants) completed with full biomarker panel, 14-day actigraphy, and digital phenotyping data.
+
+Months 13-18: Complete enrollment (target: 80 participants); begin preliminary Aim 1 analyses on the growing dataset to allow early quality-control review of biomarker and actigraphy data completeness.
+
+Months 19-24: Complete Aim 1, Aim 2, and Aim 3 analyses; manuscript preparation and submission; results dissemination to memory clinic collaborators.
+
+Key milestones: IRB approval (Month 6, go/no-go for enrollment start); 50% enrollment reached (Month 12, recruitment pace checkpoint); full enrollment complete (Month 18); primary analyses complete (Month 22); manuscript submission (Month 24).
+
+7. POTENTIAL PROBLEMS AND ALTERNATIVE STRATEGIES
+
+Potential Problem: Lower device tolerability for the expanded 14-day actigraphy and digital phenotyping protocol compared to the pilot's 7-day actigraphy-only protocol, particularly in participants with more advanced dementia severity.
+Alternative Strategy: The pilot's 94% actigraphy compliance establishes strong baseline tolerability for wrist-worn monitoring; if 14-day compliance falls meaningfully below the pilot's 7-day benchmark, the analysis plan will use the first 7 days of actigraphy data (matching the validated pilot window) as the primary rest-activity metric, with the full 14-day window as a secondary, sensitivity analysis.
+
+Potential Problem: The apathy-biomarker association may remain undetected even with the expanded panel and increased sample size, if the true underlying mechanism connecting LC-NA function to apathy specifically is weaker than hypothesized or mediated by a pathway not captured by this biomarker panel.
+Alternative Strategy: A null Aim 1/Aim 3 apathy finding, if it occurs, will itself be a mechanistically informative result — it would suggest that apathy in AD is less directly linked to peripheral noradrenergic tone than agitation is, redirecting future mechanistic work toward other candidate pathways (e.g., dopaminergic or frontal-subcortical circuits more classically associated with apathy) rather than being treated as a study failure.
+
+Potential Problem: Medication changes during the study period (e.g., new initiation of a psychotropic medication for clinical NPS management, independent of this observational study) could confound the biomarker-behavior relationship.
+Alternative Strategy: Medication status will be recorded at each contact point during the 14-day monitoring window, and any participant with a clinically-driven medication change during active data collection will have that change documented and included as a time-varying covariate in sensitivity analyses, rather than being silently treated as a fixed baseline covariate.
+
+8. RIGOR AND REPRODUCIBILITY CONSIDERATIONS
+
+Sex will be included as a covariate in all models given documented sex differences in autonomic/noradrenergic measures in prior literature. The blood and saliva collection protocols replicate the pilot's validated procedures exactly (morning collection, same assay platform) specifically to preserve comparability with pilot data and avoid introducing new pre-analytical variability. Analysis code for all regression and model-comparison analyses will be version-controlled and made available upon publication to support independent reproduction of the statistical results.

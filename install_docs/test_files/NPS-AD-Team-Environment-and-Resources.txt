@@ -1,0 +1,33 @@
+Team, Environment, and Institutional Resources: Biobehavioral Mechanism Study of Neuropsychiatric Symptoms in Alzheimer's Disease
+
+1. PRINCIPAL INVESTIGATOR AND TEAM EXPERTISE
+
+The Principal Investigator designed and executed the pilot study described in the Preliminary Data, establishing feasibility of a combined caregiver-report, salivary biomarker, and wrist actigraphy protocol in an outpatient memory clinic population, with 79% enrollment yield from eligible approached patients and 94% actigraphy wear-time compliance across the pilot's 7-day protocol. This work directly informs the expanded biomarker panel and extended 14-day monitoring protocol proposed in this application. [Not sourced from your documents — the PI's specific prior training, degree, and formal appointment (e.g., years in an AD/ADRD-focused research role) are not detailed in the source material and should be documented from the PI's actual biosketch.]
+
+2. CLINICAL RECRUITMENT ENVIRONMENT
+
+The outpatient memory clinic that served as the pilot recruitment site provides an existing population of patients with probable AD dementia across the mild-to-moderate severity range needed for this study, along with established clinical infrastructure for cognitive staging (Clinical Dementia Rating determination) that will be used for eligibility screening in the full-scale study. The pilot's demonstrated feasibility of enrolling patients during routine clinical visits, without requiring a separate research-only visit, supports the recruitment approach proposed for the expanded 80-participant sample.
+
+3. BIOMARKER ASSAY INFRASTRUCTURE
+
+The salivary alpha-amylase assay platform validated in the pilot (enzymatic kinetic assay, intra-assay coefficient of variation 8.2%) is established and will be used unchanged in the full-scale study to preserve comparability with pilot data. The expanded panel adds plasma normetanephrine and heart rate variability-based autonomic measures; [Not sourced from your documents — the specific laboratory or vendor platform for plasma normetanephrine analysis and the specific ECG/HRV recording equipment to be used are not named in the source material and must be confirmed and documented directly, including any relevant CLIA/CAP certification for the normetanephrine assay.]
+
+4. BEHAVIORAL MONITORING INFRASTRUCTURE
+
+The wrist actigraphy device and wear protocol used in the pilot (94% compliance across 7 days) will be extended to a 14-day protocol without a change in device or core methodology, directly leveraging the pilot's demonstrated tolerability. The digital phenotyping component (caregiver-managed tablet/smartphone passive monitoring) is a new addition relative to the pilot; [Not sourced from your documents — the specific digital phenotyping software platform or application to be deployed, and whether it has prior validation in a dementia caregiver-managed context, is not specified in the source material and should be confirmed with the vendor/platform documentation before submission.]
+
+5. COLLABORATIVE ARRANGEMENTS
+
+This project is grounded in a clinical-research collaboration between the Principal Investigator and the outpatient memory clinic providing the study population, an arrangement already validated through successful pilot recruitment and data collection. [Not sourced from your documents — a named biostatistics collaborator or co-Investigator with specific expertise in the multivariable and model-comparison analyses described in the Approach is not identified in the source material; given the analytic complexity of comparing biomarker-only, behavior-only, and combined models across three NPS domains, a formal biostatistics collaboration should be established and documented prior to submission.]
+
+6. DATA MANAGEMENT
+
+Caregiver-report (NPI), biomarker assay results, actigraphy-derived metrics, and digital phenotyping data will be centralized in a single study database to support the multivariable and model-comparison analyses described in the Approach. [Not sourced from your documents — the specific data capture and storage platform, and the institutional data security/compliance infrastructure supporting it (particularly relevant given passive digital phenotyping data may include timestamped location or movement data), are not specified in the source material and should be confirmed with the applicant institution's research data governance office.]
+
+7. REGULATORY AND COMPLIANCE INFRASTRUCTURE
+
+The pilot study was conducted under an approved IRB protocol covering caregiver-report assessment, salivary sample collection, and wrist actigraphy in this memory clinic population, establishing institutional precedent and existing regulatory pathway for the expanded protocol. The addition of a blood draw (plasma normetanephrine) and resting ECG, along with the new digital phenotyping data stream, will require an IRB modification or new protocol addressing these additional procedures and the caregiver-managed device consent process. [Not sourced from your documents — the specific IRB submission timeline and any additional consent considerations for the caregiver-managed digital phenotyping device are not detailed in the source material and must be finalized with the institution's research compliance office.]
+
+8. INSTITUTIONAL COMMITMENT
+
+[Not sourced from your documents — specific institutional commitments such as protected PI time, pilot funding history for the preliminary data described above, or dedicated clinical research coordinator support for this specific project are not described in the source material and should be added based on the applicant institution's actual letter of institutional commitment.] The demonstrated feasibility of the pilot protocol, combined with the established memory clinic recruitment relationship and validated core assay/actigraphy infrastructure described above, together support institutional capacity to execute the proposed R21 mechanism study within the two-year award period.
