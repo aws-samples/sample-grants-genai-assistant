@@ -50,6 +50,75 @@ Deploy entirely from your browser using **AWS CloudShell** — no local tools, n
 | `us-west-2` | US West (Oregon) | ✅ Supported |
 | `eu-west-1` | Europe (Ireland) |  ✅ Supported |
 
+### Step 1b: Enable Claude model access
+
+> ⚠️ **Do this before deploying.** The Claude models this project uses are distributed through AWS Marketplace and need a one-time model access agreement per account. Without them the stack deploys and the app loads normally, then proposal generation, the Quality grade, the chat assistant, and prompt testing all fail with an `AccessDeniedException` naming `aws-marketplace:ViewSubscriptions` / `aws-marketplace:Subscribe`. The Lambda and agent roles can complete the subscription themselves on first use, but it takes a few minutes to settle — doing it now means everything is ready when CodeBuild finishes instead of costing you a failed first run.
+
+**Two models need agreements:**
+
+| Model | Used by |
+|-------|---------|
+| `anthropic.claude-opus-4-6-v1` | Proposal generation |
+| `anthropic.claude-sonnet-4-5-20250929-v1:0` | Proposal evaluator (Quality grade), chat assistant, prompt testing |
+
+The Knowledge Base uses `amazon.titan-embed-text-v2:0`, an Amazon first-party model that needs no agreement.
+
+In the CloudShell session you just opened, set your region and check the current state:
+
+```bash
+export AWS_REGION=us-east-2          # your deploy region
+export AWS_DEFAULT_REGION=$AWS_REGION
+
+for M in anthropic.claude-opus-4-6-v1 anthropic.claude-sonnet-4-5-20250929-v1:0; do
+  echo "=== $M ==="
+  aws bedrock get-foundation-model-availability --model-id "$M"
+done
+```
+
+Four gates must all be open. `authorizationStatus`, `entitlementAvailability`, and `regionAvailability` are set by your account and region and are normally fine — if `authorizationStatus` is `NOT_AUTHORIZED`, your account is still completing Bedrock verification and you must wait. For any model whose `agreementAvailability` is `NOT_AVAILABLE`, accept the agreement:
+
+```bash
+for M in anthropic.claude-opus-4-6-v1 anthropic.claude-sonnet-4-5-20250929-v1:0; do
+  OFFER=$(aws bedrock list-foundation-model-agreement-offers \
+    --model-id "$M" --query 'offers[0].offerToken' --output text)
+  echo "Subscribing: $M"
+  aws bedrock create-foundation-model-agreement --model-id "$M" --offer-token "$OFFER"
+done
+```
+
+Each status goes to `PENDING` and reaches `AVAILABLE` within a few minutes. Poll until both flip:
+
+```bash
+for i in $(seq 1 20); do
+  O=$(aws bedrock get-foundation-model-availability \
+    --model-id anthropic.claude-opus-4-6-v1 \
+    --query 'agreementAvailability.status' --output text)
+  S=$(aws bedrock get-foundation-model-availability \
+    --model-id anthropic.claude-sonnet-4-5-20250929-v1:0 \
+    --query 'agreementAvailability.status' --output text)
+  echo "$(date +%H:%M:%S)  opus=$O  sonnet=$S"
+  [ "$O" = "AVAILABLE" ] && [ "$S" = "AVAILABLE" ] && break
+  sleep 30
+done
+```
+
+Confirm both models actually answer before moving on:
+
+```bash
+for M in us.anthropic.claude-opus-4-6-v1 us.anthropic.claude-sonnet-4-5-20250929-v1:0; do
+  echo "=== $M ==="
+  aws bedrock-runtime invoke-model --model-id "$M" \
+    --body '{"anthropic_version":"bedrock-2023-05-31","max_tokens":10,"messages":[{"role":"user","content":"hi"}]}' \
+    --cli-binary-format raw-in-base64-out /dev/stdout
+done
+```
+
+> ℹ️ Use the bare model ID (`anthropic.claude-opus-4-6-v1`) for the agreement commands and the regional inference profile (`us.` or `eu.` prefix) for the invoke. In `eu-west-1`, use `eu.anthropic.claude-opus-4-6-v1` for the invoke test.
+
+> ℹ️ **Run this once per account, not per region.** Model agreements are account-level: subscribing in one region makes the model available in every region where it is offered. Verified by subscribing in `us-east-2` and then seeing `agreementAvailability: AVAILABLE` in `eu-west-1` with no further action. If you redeploy to a different supported region in the same account, you can skip this step — though `regionAvailability` is per-region, so it is still worth running the `get-foundation-model-availability` check above before deploying somewhere new.
+
+> ℹ️ You need a role with AWS Marketplace permissions to accept the agreement. **AWSAdministratorAccess** covers this. If your account blocks Marketplace subscriptions, see [Known Errors](install_docs/errors/KNOWN_ERRORS.md#proposal-generation-fails--marketplace-model-agreement-missing) for alternatives, including switching to Claude Sonnet 4.5.
+
 ### Step 2: Get the code
 
 > ⚠️ CloudShell's home directory (`/home/cloudshell-user/`) has only 974MB. Run everything as root under `/home` where there is 8GB+ free.

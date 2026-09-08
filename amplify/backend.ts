@@ -344,6 +344,22 @@ backend.chatHandler.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
   ]
 }));
 
+// Chat Handler - AWS Marketplace subscription visibility.
+// Claude Sonnet 4.5 is distributed through AWS Marketplace (confirmed in a fresh
+// account: `aws bedrock get-foundation-model-availability --model-id
+// anthropic.claude-sonnet-4-5-20250929-v1:0` reports agreementAvailability
+// NOT_AVAILABLE). Bedrock validates the subscription against the CALLING principal
+// on every invoke, so an account-level model agreement alone is NOT sufficient —
+// without these actions the invoke fails with AccessDeniedException naming
+// aws-marketplace:ViewSubscriptions / Subscribe. See the matching statements on the
+// AgentCore execution roles in amplify/custom/agentcore-stack.ts and the
+// "Marketplace Model Agreement Missing" entry in install_docs/errors/KNOWN_ERRORS.md.
+// resources: ['*'] is an AWS limitation — these actions have no resource-level support.
+backend.chatHandler.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
+  actions: ['aws-marketplace:ViewSubscriptions', 'aws-marketplace:Subscribe'],
+  resources: ['*'],
+}));
+
 // Chat Handler - Guardrail permissions (scoped to specific guardrail ARN)
 backend.chatHandler.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
   actions: ['bedrock:ApplyGuardrail'],
@@ -361,12 +377,36 @@ backend.chatHandler.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
 // SECURITY FIX: Scope to specific Claude model version used in production
 // Broadened to the Claude family so prompt testing works with any Claude model
 // referenced by a prompt variant (no IAM change needed to switch models).
+//
+// FIX: the foundation-model ARN must span ALL regions (`bedrock:*`), not just the
+// deploy region. testPrompt now calls a cross-region inference profile
+// (us./eu.anthropic.claude-sonnet-4-5-*, see TEST_PROMPT_MODEL_ID in
+// amplify/functions/prompt-manager/handler.py), and Bedrock routes those to
+// whichever region in the pool has capacity — us-east-1/us-east-2/us-west-2 for
+// `us.`, or eu-west-1/eu-central-1/eu-north-1 etc. for `eu.`. Scoping the
+// routing target to the deploy region alone produces an intermittent
+// AccessDeniedException on the routed-to region (see the cross-region section in
+// install_docs/errors/KNOWN_ERRORS.md) that only appears when routing leaves the
+// deploy region. This matches how the AgentCore execution roles in
+// amplify/custom/agentcore-stack.ts already scope their routing targets.
 backend.promptManager.resources.lambda.addToRolePolicy(new PolicyStatement({
   actions: ['bedrock:InvokeModel'],
   resources: [
-    `arn:aws:bedrock:${Stack.of(backend.promptManager.resources.lambda).region}::foundation-model/anthropic.claude-*`,
+    `arn:aws:bedrock:*::foundation-model/anthropic.claude-*`,
     `arn:aws:bedrock:${Stack.of(backend.promptManager.resources.lambda).region}:${Stack.of(backend.promptManager.resources.lambda).account}:inference-profile/*.anthropic.claude-*`
   ]
+}));
+
+// Prompt Manager - AWS Marketplace subscription visibility.
+// testPrompt invokes Claude Sonnet 4.5, which is Marketplace-distributed (see the
+// chat handler statement above for the full explanation). Without these actions the
+// Prompts tab "Test Prompt" button fails with AccessDeniedException naming
+// aws-marketplace:ViewSubscriptions / Subscribe, even when the account-level
+// agreement exists.
+// resources: ['*'] is an AWS limitation — these actions have no resource-level support.
+backend.promptManager.resources.lambda.addToRolePolicy(new PolicyStatement({
+  actions: ['aws-marketplace:ViewSubscriptions', 'aws-marketplace:Subscribe'],
+  resources: ['*'],
 }));
 
 // CDK-NAG suppressions disabled - not required for sample/demo deployment

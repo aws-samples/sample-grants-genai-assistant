@@ -185,7 +185,7 @@ export class AgentCoreStack extends Stack {
         this.proposalEvaluatorArn = evaluatorRuntime.agentRuntimeArn;
 
         // SECURITY: Suppress IAM5 for AWS API limitations
-        suppressAgentRoleWildcards(evaluatorRole, 'ProposalEvaluator');
+        suppressAgentRoleWildcards(evaluatorRole, 'ProposalEvaluator', ['AWS Marketplace subscription actions (no resource-level permissions)']);
 
         // ========================================================================
         // 5. PROPOSAL GENERATION (Create last with sub-agent ARNs)
@@ -243,7 +243,7 @@ export class AgentCoreStack extends Stack {
         this.proposalGenerationArn = proposalGenRuntime.agentRuntimeArn;
 
         // SECURITY: Suppress IAM5 for AWS API limitations
-        suppressAgentRoleWildcards(proposalGenRole, 'ProposalGeneration', ['S3 object operations (proposals and documents)', 'Bedrock Knowledge Base operations', 'Agent-to-Agent invocation']);
+        suppressAgentRoleWildcards(proposalGenRole, 'ProposalGeneration', ['S3 object operations (proposals and documents)', 'Bedrock Knowledge Base operations', 'Agent-to-Agent invocation', 'AWS Marketplace subscription actions (no resource-level permissions)']);
     }
 
     // ========================================================================
@@ -534,6 +534,39 @@ export class AgentCoreStack extends Stack {
             ],
         }));
 
+        // AWS Marketplace subscription visibility — required for Marketplace-served
+        // Bedrock models (Claude Opus 4.6 and later are distributed this way).
+        //
+        // Bedrock validates the subscription against the CALLING principal on every
+        // invoke, and the caller here is this AgentCore execution role — not the
+        // Cognito user who clicked "generate" (identity does not propagate past
+        // AppSync) and not the admin who deployed the stack. So an account-level
+        // model agreement is necessary but NOT sufficient: without these actions
+        // on this role, every InvokeModelWithResponseStream call fails with
+        // AccessDeniedException naming aws-marketplace:ViewSubscriptions and
+        // aws-marketplace:Subscribe, even when
+        // `aws bedrock get-foundation-model-availability` reports
+        // agreementAvailability=AVAILABLE. Confirmed in us-east-2: creating the
+        // account agreement flipped that field to AVAILABLE and the agent still
+        // failed identically until this statement was added.
+        //
+        // ViewSubscriptions lets Bedrock confirm the existing agreement.
+        // Subscribe lets Bedrock complete the agreement on first use, so a fresh
+        // deployment works without the operator running the CLI agreement steps
+        // by hand (see README Step 1b).
+        //
+        // resources: ['*'] is an AWS limitation — neither action supports
+        // resource-level permissions. Scoped no further than the two read/subscribe
+        // actions Bedrock actually requires; no Marketplace management actions
+        // (Unsubscribe, agreement modification) are granted.
+        role.addToPolicy(new iam.PolicyStatement({
+            actions: [
+                'aws-marketplace:ViewSubscriptions',
+                'aws-marketplace:Subscribe',
+            ],
+            resources: ['*'],
+        }));
+
         // Bedrock Knowledge Base Retrieve
         role.addToPolicy(new iam.PolicyStatement({
             actions: ['bedrock:Retrieve'],
@@ -707,6 +740,27 @@ export class AgentCoreStack extends Stack {
                 // Foundation-model routing targets (all regions, all Claude models)
                 `arn:aws:bedrock:*::foundation-model/anthropic.claude-*`,
             ],
+        }));
+
+        // AWS Marketplace subscription visibility — see the matching statement in
+        // createProposalGenerationRole for the full explanation of why Bedrock
+        // requires this on the CALLING role for Marketplace-served models.
+        //
+        // Not strictly needed today: the evaluator is pinned to Sonnet 4.5
+        // (hardcoded in bc/proposal-evaluator-agent/agent.py), which is not
+        // Marketplace-gated. Granted anyway because the failure mode here is
+        // SILENT — _evaluate_section_adherence() catches the AccessDeniedException
+        // per section and falls back to a flat 0.70 score, so switching the
+        // evaluator to Opus would not surface an error at all. It would just
+        // quietly emit a plausible C+ grade with `usedFallback: true` on every
+        // section, making the Quality badge meaningless while looking healthy.
+        // Keeping this in parity with the generation role avoids that trap.
+        role.addToPolicy(new iam.PolicyStatement({
+            actions: [
+                'aws-marketplace:ViewSubscriptions',
+                'aws-marketplace:Subscribe',
+            ],
+            resources: ['*'],
         }));
 
         return role;
