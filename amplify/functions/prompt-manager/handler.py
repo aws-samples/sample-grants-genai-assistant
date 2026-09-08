@@ -11,6 +11,29 @@ from datetime import datetime
 REGION = os.environ.get('REGION', 'us-east-2')
 bedrock_agent = boto3.client('bedrock-agent', region_name=REGION)
 
+# Model used by the testPrompt operation.
+#
+# This is NOT a rare fallback — it is the model testPrompt ALWAYS uses. Bedrock
+# Prompt Management supports a per-variant modelId, but this project never sets
+# one: modelId is absent from the PromptData interface in
+# amplify/custom/bedrock-prompts-stack.ts, from the variant payloads in
+# python/import_bedrock_prompts.py, and from every JSON file in
+# config/bedrock-prompts/. The prompts are model-agnostic text templates; the
+# caller picks the model at invoke time (e.g. PROPOSAL_MODEL_TIER for the
+# proposal generation agent). So variant.get('modelId') is always empty here.
+#
+# FIX: this was previously hardcoded to anthropic.claude-3-sonnet-20240229-v1:0,
+# which AWS deprecated in January 2025 and retired in July 2025. Because the
+# value is always used rather than occasionally, testPrompt failed on every
+# call in any account that could no longer invoke that model — which is all of
+# them (confirmed: `aws bedrock list-foundation-models` returns no
+# claude-3-sonnet entry in us-east-2). Now uses the same region-prefixed
+# Sonnet 4.5 cross-region inference profile as amplify/functions/chat-handler.
+TEST_PROMPT_MODEL_ID = (
+    'eu.anthropic.claude-sonnet-4-5-20250929-v1:0' if REGION.startswith('eu-')
+    else 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
+)
+
 def handler(event, context):
     """Handle prompt management operations from AppSync."""
     print(f"Event: {json.dumps(event)}")
@@ -142,7 +165,9 @@ def test_prompt(prompt_id, test_input):
             raise Exception('No variants found for this prompt')
         
         variant = variants[0]
-        model_id = variant.get('modelId', 'anthropic.claude-3-sonnet-20240229-v1:0')
+        # `or` rather than a .get() default so an empty string or explicit null
+        # from the API also falls through to a usable model.
+        model_id = variant.get('modelId') or TEST_PROMPT_MODEL_ID
         
         # Get the prompt text
         template_config = variant.get('templateConfiguration', {})
