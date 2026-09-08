@@ -98,3 +98,6 @@ _overnight_delete_redeploy.py
 _overnight_report.txt
 _overnight_report.json
 _overnight_run.log
+
+# Local test plans / validation scratch notes
+_TEST-PLAN*.md
