@@ -618,9 +618,22 @@ def consolidate_results(config_id: str, user_id: str, timestamp: int, grants_sur
         all_grants = deduplicate_grants(all_grants_raw)
         logger.info(f"🌍 Total unique grants after deduplication: {len(all_grants)}")
         
-        # Apply minimum profile match threshold (20%)
+        # Minimum profile match score for a grant to be surfaced at all.
+        #
+        # This was effectively DEAD until the bayesian_matcher scoring fixes: every
+        # grant scored 94-96%, so a 20% floor never excluded anything. With
+        # profile-relative scoring the median lands around 35%, so this now does
+        # real work — measured on a 50-grant live sample, 37/50 clear it for a
+        # well-matched profile and only 3/50 for a profile with nothing relevant
+        # in the pool, which is exactly the junk-suppression this is for.
+        #
+        # Left at 20% deliberately rather than retuned: its live effect under the
+        # new scoring has not been observed yet. Note the asymmetry when tuning —
+        # the CFDA signal is US-only and mostly PENALISES (0.35x when the funding
+        # directorate does not match the researcher), so US scores now run lower
+        # than EU ones on average and a shared floor bites US harder.
         MIN_PROFILE_MATCH_SCORE = 0.20
-        
+
         # 🎯 SEPARATE SELECTION: Select top N from US and top N from EU independently
         # This ensures both regions are represented in multi-region profiles
         top_grants = []
@@ -1026,7 +1039,8 @@ def retrieve_and_store_results(session_id, config_id, user_id, grants_surfaced, 
     FILTERING LOGIC:
     - Processor writes ALL grants to DDB (no filtering)
     - This function filters to top N based on AgentConfig.grantsSurfaced
-    - Applies minimum profile match threshold (10%)
+    - Applies MIN_PROFILE_MATCH_SCORE (20% — this docstring previously said 10%,
+      which never matched the code)
     - Sorts by profileMatchScore (Bayesian score with profile) descending
     """
     try:
@@ -1145,7 +1159,8 @@ def retrieve_and_store_results(session_id, config_id, user_id, grants_surfaced, 
         scored_grants = [g for g in all_grants if g.get('profileMatchScore') is not None]
         logger.info(f"📋 Grants with profile match scores: {len(scored_grants)}")
         
-        # Apply minimum profile match threshold (20%)
+        # Second copy of this constant — see the longer note in
+        # consolidate_multi_region_results above. Keep the two in sync.
         MIN_PROFILE_MATCH_SCORE = 0.20
         filtered_grants = [
             g for g in scored_grants 

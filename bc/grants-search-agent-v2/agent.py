@@ -504,6 +504,29 @@ def search_grants_sync(keyword: str, filters: dict = None) -> List[Dict[str, Any
         logger.error(f"[V2] Search failed: {str(e)}")
         raise
 
+def extract_cfda_titles(details_data: Dict[str, Any]) -> List[str]:
+    """CFDA / Assistance Listing entries as "<number> <programTitle>" strings.
+
+    grants.gov returns these under detailsData.cfdas[] from fetchOpportunity —
+    already fetched for every grant, so this costs no extra API call. The program
+    title names the funding directorate ("Computer and Information Science and
+    Engineering", "Social, Behavioral, and Economic Sciences", "STEM Education"),
+    which is a far more reliable domain signal than the description prose.
+
+    Returns [] when absent so scoring degrades gracefully.
+    """
+    out = []
+    try:
+        for c in (details_data.get('cfdas') or []):
+            number = str(c.get('cfdaNumber') or '').strip()
+            title = str(c.get('programTitle') or '').strip()
+            if title:
+                out.append(f"{number} {title}".strip())
+    except Exception as e:  # never let this break grant conversion
+        logger.warning(f"[V2] Could not extract CFDA titles: {e}")
+    return out
+
+
 def convert_grant_to_ui_format(grant_data: Dict[str, Any]) -> Dict[str, Any]:
     """Convert agent grant format to UI format (same as V1)"""
     try:
@@ -542,7 +565,20 @@ def convert_grant_to_ui_format(grant_data: Dict[str, Any]) -> Dict[str, Any]:
             # Don't set relevanceScore here - let Bayesian matcher set it
             # If no Bayesian scoring, it will be set to 0.5 by default
             'matchedKeywords': [],
-            'tags': [],
+            # CFDA (Assistance Listing) program titles, e.g.
+            #   "47.070 Computer and Information Science and Engineering"
+            #   "47.076 STEM Education (formerly Education and Human Resources)"
+            #
+            # These come free with the fetchOpportunity call we already make, and
+            # they are the single best domain signal grants.gov exposes: short,
+            # curated, assigned by the funder, and free of the eligibility
+            # boilerplate that makes descriptions unreliable to match against.
+            # Previously `tags` was hardcoded to [] and detailsData (including
+            # cfdas) was discarded here, so the scorer never saw any of it.
+            #
+            # Reusing the existing `tags` field means no schema change. See
+            # cfda_signal() in bayesian_matcher.py for how it is scored.
+            'tags': extract_cfda_titles(details_data),
             'contactEmail': synopsis.get('agencyContactEmail', ''),
             'contactPhone': synopsis.get('agencyContactPhone', ''),
             'openDate': open_date,
