@@ -456,45 +456,55 @@ except:
         "country": "USA",
         
         # CRITICAL: Bayesian matching fields
+        # researcherType must be one of the stored VALUES from the Profile UI
+        # dropdown (biomedical | engineering | computer_science | basic_science |
+        # social_science) — these are the keys get_researcher_priors() looks up.
         "researcherType": "computer_science",
-        "expertise_level": "expert",
+        "expertise_level": "intermediate",
         "early_investigator": "False",
         
-        # Primary keywords (15% boost in Bayesian scoring)
+        # Primary keywords — these drive the grants.gov searches AND carry the
+        # largest matching weight.
+        #
+        # FEWER, BROADER terms score better than many narrow ones. Matching is by
+        # FRACTION of terms found in a grant (see _fraction_matched in
+        # bc/*/bayesian_matcher.py), so a term that never appears in real grant
+        # text DILUTES the score rather than adding to it: 2 of 10 matching = 0.20,
+        # 2 of 6 matching = 0.33.
+        #
+        # This list was trimmed from 10 to 6 for that reason. Verified against a
+        # live 50-grant sample: this set surfaces NSF CISE / AI-directorate grants
+        # in the top 5.
         "keywords": [
             "artificial intelligence",
             "AI",
             "machine learning",
-            "cybersecurity",
             "data science",
-            "computer science",
             "deep learning",
-            "neural networks",
-            "autonomous systems",
-            "robotics"
+            "neural networks"
         ],
         
-        # Secondary keywords (8% boost in Bayesian scoring)
+        # Secondary keywords — related terms and techniques, smaller weight.
+        #
+        # Multi-word terms get partial credit when all their significant words
+        # appear (adjacency not required), so short phrases still work. But avoid
+        # very narrow jargon: the Profile UI explicitly lists "knowledge graphs"
+        # and "semantic reasoning" as examples of terms too narrow to match real
+        # grant text, and this seed data previously used exactly those.
         "optimized_keywords": [
-            "knowledge graphs",
-            "semantic reasoning",
-            "reinforcement learning",
+            "AI agents",
+            "autonomous agents",
             "computer vision",
             "natural language processing",
-            "threat detection",
-            "data analytics",
-            "machine intelligence",
-            "cognitive computing",
+            "reinforcement learning",
             "intelligent systems"
         ],
         
-        # Research areas
+        # Research areas — broader domain signal than keywords.
         "research_areas": [
             "Artificial Intelligence",
             "Machine Learning",
-            "Cybersecurity",
-            "Data Science",
-            "Autonomous Systems"
+            "Data Science"
         ],
         
         # Agencies (both US and EU for multi-region discovery)
