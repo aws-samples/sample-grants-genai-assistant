@@ -209,7 +209,7 @@ const AgentSelectedGrants = () => {
         <div className="agent-grants-container">
           <div className="empty-state">
             <h3>No Grants Above Threshold</h3>
-            <p>Discovery ran on {new Date(grantsData.timestamp).toLocaleDateString()} but found no grants meeting the minimum profile match threshold (10%).</p>
+            <p>Discovery ran on {new Date(grantsData.timestamp).toLocaleDateString()} but found no grants meeting the minimum profile match threshold (20%).</p>
             <p>Found {grantsData.totalGrantsFound || 0} total grants, but none scored high enough for your profile.</p>
             <button onClick={loadLatestGrants} className="retry-button">
               Refresh
