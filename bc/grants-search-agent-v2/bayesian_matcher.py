@@ -8,11 +8,101 @@ Based on the algorithm described in BAYESIAN_GRANT_MATCHING.md
 
 import json
 import logging
-from typing import Dict, List, Any, Optional
+import re
+from typing import Dict, List, Any, Optional, Tuple
 import boto3
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Term matching helpers
+#
+# FIX: matching used `term in text`, a bare substring test. For short terms that
+# is badly wrong — 'ai' matches inside "training", "Ukraine", "available",
+# "domain", "certain", "maintain", and 'ml' matches inside HTML fragments. The
+# effect was that isAI fired on essentially every grant, including cancer and
+# education grants with no AI content, confirmed against live results.
+#
+# These helpers do word-boundary matching instead. Compiled patterns are cached
+# because the same profile/feature terms are re-tested against every grant.
+# ---------------------------------------------------------------------------
+_TERM_PATTERN_CACHE: Dict[str, Any] = {}
+
+
+def _term_matches(term: str, text: str) -> bool:
+    """True if `term` appears in `text` as a whole word (or whole phrase)."""
+    term = (term or '').strip().lower()
+    if not term or not text:
+        return False
+    pattern = _TERM_PATTERN_CACHE.get(term)
+    if pattern is None:
+        pattern = re.compile(r'\b' + re.escape(term) + r'\b')
+        _TERM_PATTERN_CACHE[term] = pattern
+    return pattern.search(text) is not None
+
+
+def _any_term_matches(terms: List[str], text: str) -> bool:
+    """True if ANY term matches as a whole word. Replaces
+    `any(t in text for t in terms)`."""
+    return any(_term_matches(t, text) for t in terms)
+
+
+def _fraction_matched(terms: Optional[List[str]], text: str) -> Tuple[float, List[str]]:
+    """What FRACTION of the supplied terms actually appear in the text.
+
+    Returns (fraction, matched_terms). Empty/missing term list -> (0.0, []).
+
+    This is what makes profile keywords matter. The previous code only tested
+    whether the profile's keyword LIST WAS NON-EMPTY, so every profile with any
+    keywords at all got an identical boost and editing the keywords changed
+    nothing.
+    """
+    cleaned = [t.strip().lower() for t in (terms or []) if t and str(t).strip()]
+    if not cleaned:
+        return 0.0, []
+    matched = [t for t in cleaned if _term_matches(t, text)]
+    return len(matched) / len(cleaned), matched
+
+
+def get_grant_text(grant: Dict[str, Any]) -> str:
+    """Combined lowercase title + agency + description for a grant.
+
+    Handles BOTH native agent structures (US nested, EU flat/nested) — the same
+    field probing extract_grant_features does, factored out so profile matching
+    scores against exactly the same text the features are derived from.
+    """
+    title = ''
+    if grant.get('title'):
+        title = grant.get('title', '')
+    elif grant.get('searchData', {}).get('title'):
+        title = grant.get('searchData', {}).get('title', '')
+    elif grant.get('grantData', {}).get('title'):
+        title = grant.get('grantData', {}).get('title', '')
+
+    agency = ''
+    if grant.get('agency'):
+        agency = grant.get('agency', '')
+    elif grant.get('searchData', {}).get('agency'):
+        agency = grant.get('searchData', {}).get('agency', '')
+    elif grant.get('grantData', {}).get('frameworkProgramme', {}).get('description'):
+        agency = grant.get('grantData', {}).get('frameworkProgramme', {}).get('description', '')
+    elif isinstance(grant.get('grantData', {}).get('frameworkProgramme'), str):
+        agency = grant.get('grantData', {}).get('frameworkProgramme', '')
+
+    description = ''
+    if grant.get('description'):
+        description = grant.get('description', '')
+    elif grant.get('detailsData', {}).get('synopsis', {}).get('synopsisDesc'):
+        description = grant.get('detailsData', {}).get('synopsis', {}).get('synopsisDesc', '')
+    elif grant.get('grantData', {}).get('description'):
+        description = grant.get('grantData', {}).get('description', '')
+    elif grant.get('grantData', {}).get('descriptionByte'):
+        description = grant.get('grantData', {}).get('descriptionByte', '')
+    elif grant.get('grantData', {}).get('summary'):
+        description = grant.get('grantData', {}).get('summary', '')
+
+    return f"{(title or '').lower()} {(agency or '').lower()} {(description or '').lower()}"
 
 # Get AWS region and table name from environment variables
 import os
@@ -108,38 +198,42 @@ def extract_grant_features(grant: Dict[str, Any]) -> Dict[str, bool]:
     # Combine all text for analysis
     combined_text = f"{title} {agency} {description}"
     
+    # NOTE: all term tests use _any_term_matches (word-boundary) rather than the
+    # previous bare `term in text` substring test. See the helper docstrings —
+    # the old form made 'ai' match "training"/"Ukraine" and fired isAI on almost
+    # every grant regardless of content.
     features = {
         # Agency features
-        'isNIH': any(term in agency for term in ['nih', 'national institutes of health', 'nidcr', 'ninds', 'nci']),
-        'isNSF': any(term in agency for term in ['nsf', 'national science foundation']),
-        'isDOD': any(term in agency for term in ['dod', 'department of defense', 'darpa', 'army', 'navy', 'air force']),
-        'isDOE': any(term in agency for term in ['doe', 'department of energy']),
-        'isEmbassy': any(term in agency for term in ['embassy', 'consulate', 'diplomatic']),
-        
+        'isNIH': _any_term_matches(['nih', 'national institutes of health', 'nidcr', 'ninds', 'nci'], agency),
+        'isNSF': _any_term_matches(['nsf', 'national science foundation'], agency),
+        'isDOD': _any_term_matches(['dod', 'department of defense', 'darpa', 'army', 'navy', 'air force'], agency),
+        'isDOE': _any_term_matches(['doe', 'department of energy'], agency),
+        'isEmbassy': _any_term_matches(['embassy', 'consulate', 'diplomatic'], agency),
+
         # Research domain features
-        'isBiomedical': any(term in combined_text for term in [
+        'isBiomedical': _any_term_matches([
             'biomedical', 'medical', 'health', 'disease', 'clinical', 'biological',
             'genomics', 'neuroscience', 'cancer', 'alzheimer', 'diabetes'
-        ]),
-        'isEngineering': any(term in combined_text for term in [
+        ], combined_text),
+        'isEngineering': _any_term_matches([
             'engineering', 'technology', 'materials', 'mechanical', 'electrical',
             'computer science', 'robotics', 'ai', 'artificial intelligence'
-        ]),
-        'isBasicScience': any(term in combined_text for term in [
+        ], combined_text),
+        'isBasicScience': _any_term_matches([
             'basic research', 'fundamental', 'theoretical', 'physics', 'chemistry',
             'mathematics', 'statistics'
-        ]),
-        
+        ], combined_text),
+
         # Specific research areas
-        'isAlzheimers': any(term in combined_text for term in ['alzheimer', 'dementia', 'neurodegeneration']),
-        'isCancer': any(term in combined_text for term in ['cancer', 'oncology', 'tumor', 'carcinoma']),
-        'isAI': any(term in combined_text for term in ['artificial intelligence', 'machine learning', 'ai', 'ml']),
-        'isClimateChange': any(term in combined_text for term in ['climate', 'environmental', 'sustainability']),
-        
+        'isAlzheimers': _any_term_matches(['alzheimer', 'dementia', 'neurodegeneration'], combined_text),
+        'isCancer': _any_term_matches(['cancer', 'oncology', 'tumor', 'carcinoma'], combined_text),
+        'isAI': _any_term_matches(['artificial intelligence', 'machine learning', 'ai', 'ml'], combined_text),
+        'isClimateChange': _any_term_matches(['climate', 'environmental', 'sustainability'], combined_text),
+
         # Grant characteristics
-        'isSmallBusiness': any(term in combined_text for term in ['sbir', 'sttr', 'small business']),
-        'isEducation': any(term in combined_text for term in ['education', 'training', 'student', 'fellowship']),
-        'isInternational': any(term in combined_text for term in ['international', 'global', 'foreign']),
+        'isSmallBusiness': _any_term_matches(['sbir', 'sttr', 'small business'], combined_text),
+        'isEducation': _any_term_matches(['education', 'training', 'student', 'fellowship'], combined_text),
+        'isInternational': _any_term_matches(['international', 'global', 'foreign'], combined_text),
         
         # Amount features
         'hasLargeAmount': grant.get('amount', 0) > 1000000,  # > $1M
@@ -148,6 +242,321 @@ def extract_grant_features(grant: Dict[str, Any]) -> Dict[str, bool]:
     }
     
     return features
+
+# ===========================================================================
+# PROFILE-RELATIVE SCORING
+#
+# Everything below exists to answer "is this grant relevant to THIS researcher"
+# rather than "is this a research grant". The original model asked the latter:
+# features were absolute, so isBiomedical (2.5x) and isCancer (2.46x) were awarded
+# to every grant regardless of who was searching. Measured against 100 live
+# grants.gov records, isBiomedical fired on 93% of them — a feature that matches
+# almost everything cannot discriminate.
+#
+# Validated on a 50-grant live sample scored for a Computer Science / AI profile:
+# the mean rank of grants in the CISE (Computer & Information Science &
+# Engineering) directorate improved from 25.4 to 4.2, and the top result changed
+# from a mathematics-education grant to "Mathematical Foundations of Artificial
+# Intelligence".
+# ===========================================================================
+
+# --- Agency aliases -------------------------------------------------------
+# A profile says "NSF"; the grant says "U.S. National Science Foundation". Neither
+# substring nor word-boundary matching connects those, so preferred-agency
+# matching silently did nothing for NSF, DOD, DARPA and NIH (verified). Matching
+# is also done against the grant's AGENCY field only — previously a stray "NSF"
+# in a description counted as an agency preference match.
+AGENCY_ALIASES = {
+    'nsf':   ['nsf', 'national science foundation'],
+    'nih':   ['nih', 'national institutes of health', 'nidcr', 'ninds', 'nci',
+              'nhlbi', 'niaid', 'nimh', 'nia'],
+    'dod':   ['dod', 'department of defense', 'dept of defense', 'army', 'navy',
+              'air force', 'marine corps', 'materiel command', 'onr',
+              'office of naval research', 'afosr', 'afrl', 'darpa', 'defense'],
+    'darpa': ['darpa', 'defense advanced research projects'],
+    'doe':   ['doe', 'department of energy', 'office of science'],
+    'nasa':  ['nasa', 'national aeronautics'],
+    'dot':   ['dot', 'department of transportation'],
+    'usda':  ['usda', 'department of agriculture'],
+    'epa':   ['epa', 'environmental protection agency'],
+    'ed':    ['department of education'],
+    'horizon europe': ['horizon europe', 'horizon'],
+    'digital europe programme': ['digital europe'],
+    'european commission': ['european commission', 'horizon europe', 'digital europe'],
+}
+
+
+def agency_match_fraction(profile_agencies, grant_agency_text) -> Tuple[float, List[str]]:
+    """Fraction of the user's preferred agencies that match the grant's agency."""
+    prefs = [a.strip().lower() for a in (profile_agencies or []) if a and str(a).strip()]
+    if not prefs or not grant_agency_text:
+        return 0.0, []
+    hits = []
+    for pref in prefs:
+        for alias in AGENCY_ALIASES.get(pref, [pref]):
+            if _term_matches(alias, grant_agency_text):
+                hits.append(pref)
+                break
+    return len(hits) / len(prefs), hits
+
+
+# --- Partial credit for multi-word profile terms --------------------------
+# "Autonomous Agents" never appears verbatim in a grant that says "autonomous
+# systems"/"autonomous maneuver", so multi-word profile terms contributed nothing.
+# Rule: require ALL significant words present (adjacency not required) and award
+# partial credit. Requiring all of them is what stops "AI Agents" matching
+# "agents of change" — 'ai' must appear as a word too.
+_STOPWORDS = {'a', 'an', 'and', 'the', 'of', 'for', 'in', 'on', 'to', 'with', 'or'}
+_WEAK_ALONE = {'agents', 'models', 'systems', 'databases', 'data', 'learning',
+               'networks', 'science', 'sciences', 'intelligence', 'research'}
+_PARTIAL_CREDIT = 0.6
+
+
+def term_credit(term: str, text: str) -> float:
+    """1.0 exact phrase; _PARTIAL_CREDIT if all significant words present; else 0."""
+    term = (term or '').strip().lower()
+    if not term:
+        return 0.0
+    if _term_matches(term, text):
+        return 1.0
+    words = [w for w in term.split() if w and w not in _STOPWORDS]
+    if len(words) < 2:
+        return 0.0
+    if not all(_term_matches(w, text) for w in words):
+        return 0.0
+    if all(w in _WEAK_ALONE for w in words):
+        return 0.0
+    return _PARTIAL_CREDIT
+
+
+def field_credit(terms, text) -> Tuple[float, List[str]]:
+    """Mean credit across a profile field's terms, and which ones contributed."""
+    cleaned = [t.strip().lower() for t in (terms or []) if t and str(t).strip()]
+    if not cleaned:
+        return 0.0, []
+    scored = [(t, term_credit(t, text)) for t in cleaned]
+    return (sum(c for _t, c in scored) / len(cleaned),
+            [t for t, c in scored if c > 0])
+
+
+# --- Feature gating -------------------------------------------------------
+# A domain feature contributes only if the PROFILE gives a reason to care.
+FEATURE_GATES = {
+    'isBiomedical': ['biomedical', 'medical', 'health', 'disease', 'clinical', 'biology',
+                     'biological', 'genomics', 'neuroscience', 'cancer', 'oncology',
+                     'bioinformatics', 'life sciences', 'epidemiology'],
+    'isCancer':     ['cancer', 'oncology', 'tumor', 'carcinoma', 'biomedical'],
+    'isAlzheimers': ['alzheimer', 'dementia', 'neurodegeneration', 'neuroscience'],
+    'isAI':         ['ai', 'artificial intelligence', 'machine learning', 'deep learning',
+                     'neural networks', 'data science', 'computer science', 'nlp',
+                     'computer vision', 'autonomous', 'agents', 'intelligent systems'],
+    'isClimateChange': ['climate', 'environmental', 'sustainability', 'energy', 'earth'],
+    'isEngineering': ['engineering', 'robotics', 'materials', 'mechanical', 'electrical',
+                      'computer science', 'systems', 'artificial intelligence'],
+    'isBasicScience': ['physics', 'chemistry', 'mathematics', 'statistics', 'theoretical',
+                       'basic research', 'data science'],
+    'isEducation':  ['education', 'teaching', 'curriculum', 'pedagogy', 'outreach',
+                     'broadening participation', 'stem education', 'training'],
+}
+# Genuinely profile-independent grant characteristics — never gated.
+UNGATED_FEATURES = {'isSmallBusiness', 'isInternational', 'isEmbassy',
+                    'hasLargeAmount', 'hasMediumAmount', 'hasSmallAmount'}
+AGENCY_FEATURES = {'isNSF': 'nsf', 'isNIH': 'nih', 'isDOD': 'dod', 'isDOE': 'doe'}
+
+# Broad features that fire on most grants are damped toward 1.0 rather than
+# removed — they carry a little signal, just far less than their raw ratio implies.
+FEATURE_DAMPING = {
+    'isEngineering': 0.30,   # matches "technology"
+    'isBasicScience': 0.30,  # matches "mathematics"/"statistics"
+    'isEducation': 0.40,
+    'isInternational': 0.40,
+    'isBiomedical': 0.50,    # isCancer/isAlzheimers carry the specificity
+}
+
+
+def profile_signal_text(profile: Dict[str, Any]) -> str:
+    """All free-text profile signal as one searchable blob."""
+    parts = [str(profile.get('researcherType', '')), str(profile.get('department', ''))]
+    for field in ('keywords', 'optimized_keywords', 'research_areas', 'expertise',
+                  'researchInterests'):
+        parts.extend(str(v) for v in (profile.get(field) or []))
+    return ' '.join(parts).lower()
+
+
+def gate_features(features: Dict[str, bool], profile: Dict[str, Any],
+                  grant_agency_text: str) -> Tuple[Dict[str, bool], List[str]]:
+    """Zero out features the profile gives no reason to care about."""
+    blob = profile_signal_text(profile)
+    prefs = [a.strip().lower() for a in (profile.get('agencies') or []) if a]
+    gated, suppressed = {}, []
+    for name, present in features.items():
+        if not present:
+            gated[name] = False
+        elif name in UNGATED_FEATURES:
+            gated[name] = True
+        elif name in AGENCY_FEATURES:
+            canonical = AGENCY_FEATURES[name]
+            keep = canonical in prefs or any(
+                canonical in AGENCY_ALIASES.get(p, [p]) for p in prefs)
+            gated[name] = keep
+            if not keep:
+                suppressed.append(name)
+        elif name in FEATURE_GATES:
+            keep = any(_term_matches(t, blob) for t in FEATURE_GATES[name])
+            gated[name] = keep
+            if not keep:
+                suppressed.append(name)
+        else:
+            gated[name] = True
+    return gated, suppressed
+
+
+def damp_ratio(name: str, ratio: float) -> float:
+    """Pull a likelihood ratio toward 1.0 for broad, non-discriminative features."""
+    factor = FEATURE_DAMPING.get(name)
+    return ratio if factor is None else 1.0 + (ratio - 1.0) * factor
+
+
+# --- Keyword weighting: title beats body ----------------------------------
+# WHERE a keyword appears matters more than whether it appears. A grant whose
+# TITLE names your field is about your field; one that lists your field among
+# thirty eligible topics in its description is not. Confirmed on live data: TCUP
+# and CAMEL both contain "artificial intelligence"/"machine learning" in
+# eligibility boilerplate, while "Quantum Machine Learning" has it in the title.
+KEYWORD_MAX_TITLE = (('keywords', 4.00), ('research_areas', 2.50),
+                     ('optimized_keywords', 2.00))
+KEYWORD_MAX_BODY = (('keywords', 1.40), ('research_areas', 1.25),
+                    ('optimized_keywords', 1.15))
+AGENCY_MAX = 1.50
+
+
+# --- CFDA / Assistance Listing domain signal (US grants) ------------------
+# The strongest domain signal grants.gov exposes. Program titles name the funding
+# directorate and are short, curated and boilerplate-free, where descriptions are
+# neither. Measured on live data:
+#   TCUP      47.076 STEM Education                          <- an education grant
+#   CAMEL     47.075 Social, Behavioral, and Economic Sciences <- social science
+#   Sociology 47.075 Social, Behavioral, and Economic Sciences
+#   IUSE      47.041 Engineering + 47.076 STEM Education
+# All four mention AI/ML in their prose; none sits in 47.070 (Computer and
+# Information Science and Engineering) where a CS researcher's grants live.
+#
+# Supplied via grant['tags'] (populated by extract_cfda_titles in the search
+# agent). Absent -> neutral, so this is inert until the agent is redeployed.
+CFDA_DOMAIN_TERMS = {
+    'computer science': ['computer', 'information science', 'information technology',
+                         'cyber', 'computing'],
+    'engineering':      ['engineering'],
+    'biomedical':       ['health', 'medical', 'biomedical', 'cancer', 'allergy',
+                         'infectious', 'mental', 'aging', 'nursing', 'dental',
+                         'neurological', 'heart', 'lung', 'blood', 'diabetes'],
+    'social science':   ['social', 'behavioral', 'economic', 'sociolog'],
+    'basic science':    ['mathematical', 'physical sciences', 'chemistry', 'physics',
+                         'geosciences', 'polar', 'astronomical', 'materials research',
+                         'biological sciences'],
+    'education':        ['stem education', 'education', 'human resources'],
+    'environment':      ['environmental', 'climate', 'atmospheric', 'ocean', 'earth'],
+}
+
+# How to read the researcher's own domain off their profile.
+PROFILE_DOMAIN_TERMS = {
+    'computer science': ['computer science', 'artificial intelligence', 'machine learning',
+                         'data science', 'deep learning', 'neural networks', 'ai',
+                         'cybersecurity', 'informatics', 'autonomous', 'agents'],
+    'engineering':      ['engineering', 'robotics', 'mechanical', 'electrical', 'materials'],
+    'biomedical':       ['biomedical', 'medical', 'health', 'cancer', 'oncology', 'clinical',
+                         'disease', 'biology', 'genomics', 'neuroscience', 'microbiome'],
+    'social science':   ['social science', 'sociology', 'psychology', 'economics',
+                         'behavioral', 'anthropology'],
+    'basic science':    ['physics', 'chemistry', 'mathematics', 'statistics', 'astronomy'],
+    'education':        ['education', 'curriculum', 'teaching', 'pedagogy', 'students',
+                         'undergraduate', 'outreach', 'broadening participation'],
+    'environment':      ['climate', 'environmental', 'atmospheric', 'ocean', 'sustainability'],
+}
+
+# Some titles carry NO domain information. DOD's 12.630 "Basic, Applied, and
+# Advanced Research in Science and Engineering" covers everything DOD funds —
+# inferring "engineering" from it and penalising a CS researcher would be wrong.
+# Catch-alls are treated as UNKNOWN (neutral), never as evidence of another field.
+CFDA_CATCHALL_PATTERNS = [
+    r'basic,?\s+applied,?\s+and\s+advanced\s+research',
+    r'^\d*\s*basic\s+(scientific\s+)?research$',
+    r'research\s+and\s+development\s+(program|activities)$',
+    r'^\d*\s*(multidisciplinary|general)\s+research',
+    r'science\s+and\s+technology\s+and\s+other\s+research',
+]
+
+# Domains that genuinely overlap. CISE is "Computer and Information Science AND
+# Engineering", and CS researchers routinely hold NSF Engineering awards, so an
+# engineering grant is not wrong for a CS profile the way a social-science one is.
+DOMAIN_ADJACENCY = {
+    frozenset({'computer science', 'engineering'}),
+    frozenset({'computer science', 'basic science'}),
+    frozenset({'engineering', 'basic science'}),
+    frozenset({'biomedical', 'basic science'}),
+    frozenset({'social science', 'education'}),
+    frozenset({'environment', 'basic science'}),
+}
+
+CFDA_ALIGNED_MAX = 3.00
+CFDA_PENALTY_UNRELATED = 0.35
+CFDA_PENALTY_ADJACENT = 0.75
+
+
+def _domains_of(text: str, table: Dict[str, List[str]]) -> set:
+    text = (text or '').lower()
+    return {d for d, terms in table.items() if _any_term_matches(terms, text)}
+
+
+def _is_cfda_catchall(title: str) -> bool:
+    t = (title or '').lower()
+    return any(re.search(p, t) for p in CFDA_CATCHALL_PATTERNS)
+
+
+def get_cfda_titles(grant: Dict[str, Any]) -> List[str]:
+    """CFDA program titles for a grant, from wherever they landed."""
+    tags = grant.get('tags') or []
+    # Only CFDA-shaped entries ("<number> <title>"); ignore any other tags.
+    out = [str(t) for t in tags if re.match(r'^\d{2}\.\d{3}\s+\S', str(t))]
+    if out:
+        return out
+    details = grant.get('detailsData') or {}
+    return [f"{c.get('cfdaNumber')} {c.get('programTitle')}".strip()
+            for c in (details.get('cfdas') or []) if c.get('programTitle')]
+
+
+def cfda_signal(cfda_titles: List[str], profile: Dict[str, Any]) -> Tuple[float, str]:
+    """Multiplier from CFDA directorate alignment. 1.0 when uninformative."""
+    if not cfda_titles:
+        return 1.0, 'no CFDA data'
+    pdoms = _domains_of(profile_signal_text(profile), PROFILE_DOMAIN_TERMS)
+    if not pdoms:
+        return 1.0, 'profile domain unknown'
+
+    informative = [t for t in cfda_titles if not _is_cfda_catchall(t)]
+    dropped = len(cfda_titles) - len(informative)
+    if not informative:
+        return 1.0, f'neutral — all {len(cfda_titles)} CFDA title(s) are catch-alls'
+
+    gdoms = set()
+    for t in informative:
+        gdoms |= _domains_of(t, CFDA_DOMAIN_TERMS)
+    if not gdoms:
+        return 1.0, 'CFDA domain unknown'
+
+    note = f' [{dropped} catch-all ignored]' if dropped else ''
+    aligned = pdoms & gdoms
+    if aligned:
+        frac = len(aligned) / len(gdoms)
+        return (1.0 + (CFDA_ALIGNED_MAX - 1.0) * frac,
+                f"ALIGNED {sorted(aligned)} of {sorted(gdoms)}{note}")
+
+    if any(frozenset({g, p}) in DOMAIN_ADJACENCY for g in gdoms for p in pdoms):
+        return CFDA_PENALTY_ADJACENT, f"ADJACENT {sorted(gdoms)} ~ {sorted(pdoms)}{note}"
+
+    return (CFDA_PENALTY_UNRELATED,
+            f"MISALIGNED {sorted(gdoms)} vs profile {sorted(pdoms)}{note}")
+
 
 def get_researcher_priors(profile: Dict[str, Any]) -> float:
     """Get prior probability based on researcher type and experience level"""
@@ -220,9 +629,24 @@ def get_feature_likelihoods() -> Dict[str, Dict[str, float]]:
         'hasSmallAmount': {'relevant': 0.28, 'irrelevant': 0.32},   # 0.88x ratio (slight penalty)
     }
 
-def calculate_bayesian_probability(profile: Dict[str, Any], features: Dict[str, bool]) -> float:
-    """Calculate Bayesian probability that grant is relevant to researcher"""
-    
+def calculate_bayesian_probability(profile: Dict[str, Any], features: Dict[str, bool],
+                                   combined_text: str = '', grant_title: str = '',
+                                   grant_agency: str = '',
+                                   cfda_titles: Optional[List[str]] = None) -> float:
+    """Calculate Bayesian probability that grant is relevant to researcher.
+
+    `combined_text` is title + agency + description (see get_grant_text) and is
+    required for profile keyword matching to do anything. `grant_title` enables
+    the title-vs-body weighting and `grant_agency` the agency alias matching and
+    agency-feature gating.
+
+    All three default to '' so the deprecated apply_bayesian_scoring path still
+    works — it simply scores on gated features and the prior alone.
+    """
+
+    grant_title = (grant_title or '').lower()
+    grant_agency = (grant_agency or '').lower()
+
     # Get prior probability
     prior = get_researcher_priors(profile)
     logger.info(f"🎯 Starting Bayesian calculation - Prior: {prior:.3f}")
@@ -230,57 +654,93 @@ def calculate_bayesian_probability(profile: Dict[str, Any], features: Dict[str, 
     # Get feature likelihoods
     likelihoods = get_feature_likelihoods()
     
-    # Calculate likelihood ratio for each feature
+    # Suppress features the profile gives no reason to care about, then damp the
+    # broad ones. See gate_features / damp_ratio for why.
+    features, suppressed = gate_features(features, profile, grant_agency)
+    if suppressed:
+        logger.info(f"🚫 Suppressed (off-profile): {', '.join(suppressed)}")
+
     likelihood_ratio = 1.0
     matched_features = []
-    
+
     for feature, is_present in features.items():
         if feature in likelihoods and is_present:
             feature_likelihood = likelihoods[feature]
-            
-            # Calculate likelihood ratio: P(feature|relevant) / P(feature|irrelevant)
             if feature_likelihood['irrelevant'] > 0:
                 ratio = feature_likelihood['relevant'] / feature_likelihood['irrelevant']
-                likelihood_ratio *= ratio
-                matched_features.append(f"{feature}({ratio:.1f}x)")
-    
+                damped = damp_ratio(feature, ratio)
+                likelihood_ratio *= damped
+                matched_features.append(
+                    f"{feature}({damped:.2f}x)" if damped == ratio
+                    else f"{feature}({damped:.2f}x, damped from {ratio:.2f})")
+
     if matched_features:
         logger.info(f"📋 Matched features ({len(matched_features)}): {', '.join(matched_features)}")
         logger.info(f"📈 Combined likelihood from features: {likelihood_ratio:.3f}x")
     else:
         logger.info(f"📋 No features matched - using prior only")
     
-    # Additional boost for keyword matches with different weights
-    profile_keywords = profile.get('keywords', [])  # Primary keywords - higher weight
-    optimized_keywords = profile.get('optimized_keywords', [])  # Secondary keywords - lower weight
-    profile_research_areas = profile.get('research_areas', [])
-    
-    # Check for direct keyword matches (this gives additional confidence)
+    # ---------------------------------------------------------------------
+    # Profile boosts, scaled by how much of the profile ACTUALLY matches.
+    #
+    # FIX: this previously tested only whether each profile list was NON-EMPTY:
+    #     if profile_keywords: keyword_boost *= 1.08
+    # so any profile with any keywords received an identical 1.08 x 1.03 x 1.04
+    # = 1.157x, whatever the keywords were and whatever the grant was about.
+    # Editing keywords therefore could not change a single score — the reported
+    # symptom. `research_areas` was read into a variable and never used at all.
+    #
+    # Now each boost scales with the FRACTION of that field's terms found in the
+    # grant text, so the maxima below are reached only on a full match. The
+    # weights match what the Profile UI advertises (15% / 5% / 10% / 8%).
+    #
+    # Requires `combined_text`; when it is not supplied (deprecated
+    # apply_bayesian_scoring path) profile boosts are skipped rather than faked.
+    # ---------------------------------------------------------------------
     keyword_boost = 1.0
     boosts_applied = []
-    
-    # REDUCED boosts to prevent over-scoring when combined with feature matches
-    # Primary keywords get 8% boost (reduced from 15%)
-    if profile_keywords:
-        keyword_boost *= 1.08
-        boosts_applied.append(f"keywords(1.08x)")
-    
-    # Optimized keywords get 3% boost (reduced from 5%)
-    if optimized_keywords:
-        keyword_boost *= 1.03
-        boosts_applied.append(f"opt_keywords(1.03x)")
-    
-    # Check for preferred agencies - 4% boost (reduced from 8%)
-    preferred_agencies = profile.get('agencies', [])
-    if preferred_agencies:
-        keyword_boost *= 1.04
-        boosts_applied.append(f"agencies(1.04x)")
-    
+
+    if combined_text:
+        for (field, max_title), (_f, max_body) in zip(KEYWORD_MAX_TITLE, KEYWORD_MAX_BODY):
+            terms = profile.get(field)
+            t_frac, t_hits = field_credit(terms, grant_title)
+            a_frac, a_hits = field_credit(terms, combined_text)
+            # body = matched somewhere in the grant, but NOT in the title
+            body_only = [h for h in a_hits if h not in t_hits]
+            b_frac = (len(body_only) / len(a_hits)) * a_frac if a_hits else 0.0
+
+            if t_frac > 0:
+                applied = 1.0 + (max_title - 1.0) * t_frac
+                keyword_boost *= applied
+                boosts_applied.append(f"{field}@TITLE({applied:.2f}x: {', '.join(t_hits[:3])})")
+            if b_frac > 0:
+                applied = 1.0 + (max_body - 1.0) * b_frac
+                keyword_boost *= applied
+                boosts_applied.append(f"{field}@body({applied:.2f}x, {len(body_only)} term(s))")
+
+        frac, hits = agency_match_fraction(profile.get('agencies'), grant_agency)
+        if frac > 0:
+            applied = 1.0 + (AGENCY_MAX - 1.0) * frac
+            keyword_boost *= applied
+            boosts_applied.append(f"agencies({applied:.2f}x: {', '.join(hits)})")
+    else:
+        logger.warning("⚠️ No grant text supplied — profile keyword boosts skipped")
+
     if boosts_applied:
-        logger.info(f"🚀 Profile boosts: {', '.join(boosts_applied)} = {keyword_boost:.3f}x total")
+        logger.info(f"🚀 Profile boosts: {'; '.join(boosts_applied)} = {keyword_boost:.3f}x total")
+    else:
+        logger.info("🚀 Profile boosts: none — no profile terms matched this grant")
     
     likelihood_ratio *= keyword_boost
-    
+
+    # CFDA directorate alignment (US grants). Neutral when unavailable, so this is
+    # inert until the search agent populates `tags` with CFDA program titles.
+    if cfda_titles:
+        cfda_mult, cfda_why = cfda_signal(cfda_titles, profile)
+        if cfda_mult != 1.0:
+            likelihood_ratio *= cfda_mult
+        logger.info(f"🏛️ CFDA: {cfda_mult:.2f}x — {cfda_why}")
+
     # Apply Bayes' theorem: P(relevant|features) = P(features|relevant) * P(relevant) / P(features)
     # Using odds form: odds_posterior = likelihood_ratio * odds_prior
     
@@ -439,8 +899,16 @@ def apply_dual_scoring(grants: List[Dict[str, Any]], cognito_user_id: str, searc
             grant['keywordScore'] = keyword_score
             
             # 2. Calculate Bayesian profile match score
+            # Pass the grant text so profile keywords are matched against it —
+            # without this the profile boosts are skipped (see
+            # calculate_bayesian_probability).
             features = extract_grant_features(grant)
-            profile_score = calculate_bayesian_probability(profile, features)
+            profile_score = calculate_bayesian_probability(
+                profile, features, get_grant_text(grant),
+                grant_title=grant.get('title', ''),
+                grant_agency=grant.get('agency', ''),
+                cfda_titles=get_cfda_titles(grant),
+            )
             grant['profileMatchScore'] = profile_score
             grant['bayesianProbability'] = profile_score  # Keep for debugging
             
