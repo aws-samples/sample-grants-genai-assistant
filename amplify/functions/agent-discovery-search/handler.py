@@ -474,6 +474,43 @@ def invoke_parallel_searches(config_id: str, user_id: str, queries: List[str], t
         }
 
 
+def deadline_sort_key(grant: dict) -> float:
+    """Days remaining until a grant's deadline. Used only to break score ties.
+
+    Ties are real: the match score saturates near the top of its range, so
+    several grants can land on the same value, and near-identical grants (sibling
+    NOFOs from one program family) can score identically. Python's sort is stable,
+    so without a tie-break the winner was decided by DynamoDB return order —
+    arbitrary, and not guaranteed to be the same between two runs on identical
+    data.
+
+    Sooner deadlines win. This agent runs on a schedule, so a grant closing in 300
+    days will be surfaced again next run, whereas one closing in 20 days may not
+    be. Among equally-scoring grants, prefer the one where waiting costs the
+    opportunity.
+
+    Unknown, unparseable and already-expired deadlines sort last. The two agents
+    emit different formats — grants.gov gives MM/DD/YYYY, the EU agent formats as
+    YYYY-MM-DD — so both are accepted.
+    """
+    raw = str(grant.get('deadline') or '').strip()
+    if not raw:
+        return float('inf')
+    for fmt in ('%m/%d/%Y', '%Y-%m-%d', '%m/%d/%y'):
+        try:
+            days = (datetime.strptime(raw, fmt) - datetime.now()).days
+            return days if days >= 0 else float('inf')
+        except ValueError:
+            continue
+    return float('inf')
+
+
+def rank_grants(grants: List[dict]) -> None:
+    """Sort in place: best match first, sooner deadline breaking ties."""
+    grants.sort(key=lambda g: (-float(g.get('profileMatchScore', 0)),
+                               deadline_sort_key(g)))
+
+
 def consolidate_results(config_id: str, user_id: str, timestamp: int, grants_surfaced: int, us_session_ids: List[str], eu_session_ids: List[str]):
     """
     NEW ACTION: Consolidate results from both DDB tables, filter, and write to S3.
@@ -644,7 +681,7 @@ def consolidate_results(config_id: str, user_id: str, timestamp: int, grants_sur
         if us_session_ids:
             us_scored = [g for g in all_grants if g.get('source') == 'US' and g.get('profileMatchScore') is not None]
             us_filtered = [g for g in us_scored if float(g.get('profileMatchScore', 0)) >= MIN_PROFILE_MATCH_SCORE]
-            us_filtered.sort(key=lambda x: float(x.get('profileMatchScore', 0)), reverse=True)
+            rank_grants(us_filtered)
             top_us = us_filtered[:grants_surfaced]
             top_grants.extend(top_us)
             logger.info(f"🇺🇸 US: {len(us_scored)} scored, {len(us_filtered)} above threshold, selected top {len(top_us)}")
@@ -653,7 +690,7 @@ def consolidate_results(config_id: str, user_id: str, timestamp: int, grants_sur
         if eu_session_ids:
             eu_scored = [g for g in all_grants if g.get('source') == 'EU' and g.get('profileMatchScore') is not None]
             eu_filtered = [g for g in eu_scored if float(g.get('profileMatchScore', 0)) >= MIN_PROFILE_MATCH_SCORE]
-            eu_filtered.sort(key=lambda x: float(x.get('profileMatchScore', 0)), reverse=True)
+            rank_grants(eu_filtered)
             top_eu = eu_filtered[:grants_surfaced]
             top_grants.extend(top_eu)
             logger.info(f"🇪🇺 EU: {len(eu_scored)} scored, {len(eu_filtered)} above threshold, selected top {len(top_eu)}")
@@ -1169,9 +1206,10 @@ def retrieve_and_store_results(session_id, config_id, user_id, grants_surfaced, 
         
         logger.info(f"🔍 After applying {MIN_PROFILE_MATCH_SCORE*100}% profile match threshold: {len(filtered_grants)} grants")
         
-        # Sort by profileMatchScore (Bayesian score with profile) descending
+        # Sort by profileMatchScore (Bayesian score with profile) descending, with
+        # sooner deadlines breaking ties. See deadline_sort_key.
         # This ensures best grants from BOTH regions rise to the top
-        filtered_grants.sort(key=lambda x: float(x.get('profileMatchScore', 0)), reverse=True)
+        rank_grants(filtered_grants)
         
         # Take top N grants based on AgentConfig.grantsSurfaced
         top_grants = filtered_grants[:grants_surfaced]
@@ -1257,6 +1295,7 @@ def store_results_in_s3(session_id, config_id, user_id, top_grants, total_grants
                 'title': grant.get('title'),
                 'agency': grant.get('agency'),
                 'matchScore': float(grant.get('profileMatchScore', 0)),  # Use profileMatchScore (Bayesian with profile)
+                'matchedKeywords': [str(k) for k in (grant.get('matchedKeywords') or [])],
                 'amount': float(grant.get('amount', 0)) if grant.get('amount') else None,
                 'deadline': grant.get('deadline'),
                 'description': grant.get('description', ''),  # Full description, no truncation
@@ -1327,6 +1366,11 @@ def store_consolidated_results(session_id, config_id, user_id, top_grants, all_g
                 'title': grant.get('title'),
                 'agency': grant.get('agency'),
                 'matchScore': float(grant.get('profileMatchScore', 0)),
+                # Why this grant matched, e.g. "artificial intelligence (in title)".
+                # The score saturates near the top of its range, so several grants
+                # can display the same rounded percentage — these reasons are what
+                # let a user tell them apart.
+                'matchedKeywords': [str(k) for k in (grant.get('matchedKeywords') or [])],
                 'amount': float(grant.get('amount', 0)) if grant.get('amount') else None,
                 'deadline': grant.get('deadline'),
                 'description': grant.get('description', ''),

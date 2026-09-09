@@ -430,6 +430,47 @@ const GrantCard = ({ grant, index, totalGrants }) => {
           </div>
         </div>
 
+        {/*
+          Why this grant matched. The percentage alone is a poor discriminator near
+          the top of the range — the score saturates, so two grants can display the
+          same rounded percentage while differing meaningfully underneath. These
+          reasons come from the scorer itself (profile terms found, and where).
+        */}
+        {Array.isArray(grant.matchedKeywords) && grant.matchedKeywords.length > 0 && (
+          <div className="grant-match-reasons" style={{ marginBottom: '12px' }}>
+            <span className="detail-label" id={`match-reasons-${grant.id || index}`}>
+              Why this matched:
+            </span>
+            <ul
+              aria-labelledby={`match-reasons-${grant.id || index}`}
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '6px',
+                listStyle: 'none',
+                margin: '6px 0 0 0',
+                padding: 0
+              }}
+            >
+              {grant.matchedKeywords.map((reason) => (
+                <li
+                  key={reason}
+                  style={{
+                    fontSize: '12px',
+                    padding: '3px 9px',
+                    borderRadius: '10px',
+                    backgroundColor: '#eef4fb',
+                    color: '#1c3d5a',
+                    border: '1px solid #c4d7ec'
+                  }}
+                >
+                  {reason}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="grant-description">
           <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {formatDescription(getFullDescription(), isDescriptionExpanded)}

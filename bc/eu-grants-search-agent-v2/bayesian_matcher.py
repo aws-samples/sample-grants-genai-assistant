@@ -485,15 +485,29 @@ def get_feature_likelihoods() -> Dict[str, Dict[str, float]]:
         'hasSmallAmount': {'relevant': 0.28, 'irrelevant': 0.32},   # 0.88x ratio (slight penalty)
     }
 
+MATCH_REASON_LIMIT = 12
+
+
 def calculate_bayesian_probability(profile: Dict[str, Any], features: Dict[str, bool],
                                    combined_text: str = '', grant_title: str = '',
-                                   grant_agency: str = '') -> float:
+                                   grant_agency: str = '',
+                                   explain: Optional[Dict[str, Any]] = None) -> float:
     """Calculate Bayesian probability that grant is relevant to researcher.
 
     `combined_text` is the grant's title + agency + description (see
     get_grant_text). It is required for the profile keyword boosts to do
     anything; the default '' keeps the deprecated apply_bayesian_scoring path
     working, at the cost of skipping those boosts entirely.
+
+    Pass a dict as `explain` to receive the human-readable reasons this grant
+    matched, under key 'matchedKeywords'. The score itself is a single number and
+    saturates near the top of its range, so the reasons are often more useful to
+    a user than the score. Ordered strongest signal first: title matches, then
+    preferred agency, then description matches. Only positive signals are listed.
+
+    Unlike the US matcher this takes no `cfda_titles` — CFDA / Assistance Listing
+    numbers are a US construct with no EU equivalent, so EU grants have no
+    funding-programme signal to report.
     """
 
     grant_title = (grant_title or '').lower()
@@ -552,6 +566,11 @@ def calculate_bayesian_probability(profile: Dict[str, Any], features: Dict[str, 
     
     keyword_boost = 1.0
     boosts_applied = []
+    # Reasons kept in separate buckets so the final list reads strongest-first
+    # regardless of which profile field each term came from.
+    title_reasons: List[str] = []
+    body_reasons: List[str] = []
+    agency_reasons: List[str] = []
 
     if combined_text:
         for (field, max_title), (_f, max_body) in zip(KEYWORD_MAX_TITLE, KEYWORD_MAX_BODY):
@@ -566,16 +585,19 @@ def calculate_bayesian_probability(profile: Dict[str, Any], features: Dict[str, 
                 applied = 1.0 + (max_title - 1.0) * t_frac
                 keyword_boost *= applied
                 boosts_applied.append(f"{field}@TITLE({applied:.2f}x: {', '.join(t_hits[:3])})")
+                title_reasons.extend(f"{h} (in title)" for h in t_hits)
             if b_frac > 0:
                 applied = 1.0 + (max_body - 1.0) * b_frac
                 keyword_boost *= applied
                 boosts_applied.append(f"{field}@body({applied:.2f}x, {len(body_only)} term(s))")
+                body_reasons.extend(f"{h} (in description)" for h in body_only)
 
         frac, hits = agency_match_fraction(profile.get('agencies'), grant_agency)
         if frac > 0:
             applied = 1.0 + (AGENCY_MAX - 1.0) * frac
             keyword_boost *= applied
             boosts_applied.append(f"agencies({applied:.2f}x: {', '.join(hits)})")
+            agency_reasons.extend(f"{h.upper()} (preferred agency)" for h in hits)
     else:
         logger.warning("⚠️ No grant text supplied — profile keyword boosts skipped")
 
@@ -583,7 +605,16 @@ def calculate_bayesian_probability(profile: Dict[str, Any], features: Dict[str, 
         logger.info(f"🚀 Profile boosts: {'; '.join(boosts_applied)} = {keyword_boost:.3f}x total")
     else:
         logger.info("🚀 Profile boosts: none — no profile terms matched this grant")
-    
+
+    if explain is not None:
+        seen, ordered = set(), []
+        for reason in title_reasons + agency_reasons + body_reasons:
+            key = reason.lower()
+            if key not in seen:
+                seen.add(key)
+                ordered.append(reason)
+        explain['matchedKeywords'] = ordered[:MATCH_REASON_LIMIT]
+
     likelihood_ratio *= keyword_boost
     
     # Apply Bayes' theorem: P(relevant|features) = P(features|relevant) * P(relevant) / P(features)
@@ -660,6 +691,7 @@ def apply_dual_scoring(grants: List[Dict[str, Any]], cognito_user_id: str, searc
             grant['keywordScore'] = keyword_score
             grant['profileMatchScore'] = 0.0  # No profile available
             grant['relevanceScore'] = keyword_score  # Default to keyword score
+            grant['matchedKeywords'] = []  # Nothing to explain without a profile
         return grants
     
     logger.info(f"✅ DUAL SCORING: Found profile '{profile.get('name', 'Unknown')}' (type: {profile.get('researcherType', 'Unknown')})")
@@ -679,12 +711,17 @@ def apply_dual_scoring(grants: List[Dict[str, Any]], cognito_user_id: str, searc
             # without this the profile boosts are skipped (see
             # calculate_bayesian_probability).
             features = extract_grant_features(grant)
+            explain: Dict[str, Any] = {}
             profile_score = calculate_bayesian_probability(
                 profile, features, get_grant_text(grant),
                 grant_title=grant.get('title', ''),
                 grant_agency=grant.get('agency', ''),
+                explain=explain,
             )
             grant['profileMatchScore'] = profile_score
+            # Why this grant matched. The field already existed on the record and
+            # was hardcoded to [] — nothing ever populated it.
+            grant['matchedKeywords'] = explain.get('matchedKeywords', [])
             grant['bayesianProbability'] = profile_score  # Keep for debugging
             
             # 3. Set relevanceScore to profile score (used for filtering/ranking)
@@ -703,6 +740,7 @@ def apply_dual_scoring(grants: List[Dict[str, Any]], cognito_user_id: str, searc
             grant['keywordScore'] = 0.5
             grant['profileMatchScore'] = 0.0
             grant['relevanceScore'] = 0.5
+            grant['matchedKeywords'] = []
             scored_grants.append(grant)
     
     # Sort by keyword score (for All tab display)

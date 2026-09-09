@@ -573,6 +573,9 @@ def write_eu_grant_record(session_id: str, grant: Dict[str, Any], table, cognito
             "relevanceScore": float(grant.get('relevanceScore', 0.85)),
             "profileMatchScore": float(grant.get('profileMatchScore', 0)) if grant.get('profileMatchScore') is not None else None,
             "keywordScore": float(grant.get('keywordScore', 0)) if grant.get('keywordScore') is not None else None,
+            # Why this grant matched, populated by the scorer. The field was on the
+            # schema but this record never carried it, so it was always empty.
+            "matchedKeywords": grant.get('matchedKeywords', []),
             "hasDetailedInfo": grant.get('hasDetailedInfo', False),
             "euReference": grant.get('euReference', ''),
             "euIdentifier": grant.get('euIdentifier', ''),
