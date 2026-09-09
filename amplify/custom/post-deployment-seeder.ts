@@ -214,6 +214,10 @@ export class PostDeploymentSeeder extends Construct {
                     'amplify:ListBranches',
                     'amplify:CreateDeployment',
                     'amplify:StartDeployment',
+                    // Required to poll a deployment to completion. Without it the
+                    // seeder cannot tell whether the deploy it started actually
+                    // worked — which is the whole point of waiting.
+                    'amplify:GetJob',
                     'amplify:GetApp',
                     'amplify:GetBranch',
                     'amplify:CreateBranch',
@@ -222,6 +226,7 @@ export class PostDeploymentSeeder extends Construct {
                 resources: [
                     `arn:aws:amplify:${region}:${account}:apps/${this.amplifyApp.attrAppId}`,
                     `arn:aws:amplify:${region}:${account}:apps/${this.amplifyApp.attrAppId}/branches/*`,
+                    `arn:aws:amplify:${region}:${account}:apps/${this.amplifyApp.attrAppId}/branches/*/jobs/*`,
                 ],
             })
         );
