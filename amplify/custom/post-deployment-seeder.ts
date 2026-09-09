@@ -640,6 +640,7 @@ fi`,
 import boto3
 import os
 import json
+import sys
 import time
 
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"])
@@ -675,13 +676,23 @@ while elapsed < 1200:
         print("✅ Agent discovery completed successfully")
         break
     elif status in ('FAILED', 'TIMED_OUT', 'ABORTED'):
+        # Fail the build. This previously just broke out of the loop and exited 0,
+        # so a failed discovery run looked identical to a successful one.
         print(f"❌ Agent discovery {status}")
-        break
+        try:
+            print(f"   Cause: {exec_response.get('cause') or 'not reported'}")
+            print(f"   Error: {exec_response.get('error') or 'not reported'}")
+        except Exception:
+            pass
+        print(f"   Execution ARN: {execution_arn}")
+        sys.exit(1)
     time.sleep(30)
     elapsed += 30
 
 if elapsed >= 1200:
-    print("⚠️  Timed out waiting for agent discovery (20 min)")
+    print("❌ Timed out waiting for agent discovery (20 min)")
+    print(f"   Execution ARN: {execution_arn}")
+    sys.exit(1)
 PYEOF`,
                             'python3 /tmp/run_discovery.py',
                             'echo ""',
@@ -731,6 +742,7 @@ PYEOF`,
                             `cat > /tmp/deploy_amplify.py << 'PYEOF'
 import boto3
 import os
+import sys
 import time
 import zipfile
 
@@ -757,7 +769,13 @@ try:
     else:
         print("✅ Main branch exists")
 except Exception as e:
-    print(f"⚠️  Branch check/creation: {e}")
+    # Do NOT continue past this. Without the branch, create_deployment below
+    # cannot succeed, and swallowing the error here produced a build that
+    # reported success while deploying nothing.
+    print(f"❌ Branch check/creation failed: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 
 # Create deployment
 try:
@@ -792,12 +810,38 @@ try:
     )
     
     print(f"✅ Deployment started: {job_id}")
-    print(f"Check Amplify console for deployment progress")
-    
+
+    # Wait for it. start_deployment returning does NOT mean the deploy worked --
+    # the job runs asynchronously and can fail after this call returns. Without
+    # this wait the build reported success while the site kept serving the
+    # previous bundle.
+    print("⏳ Waiting for Amplify deployment to finish (max 10 min)...")
+    waited = 0
+    while waited < 600:
+        job = amplify.get_job(appId=app_id, branchName="main", jobId=job_id)
+        job_status = job["job"]["summary"]["status"]
+        print(f"  [{waited}s] Job {job_id}: {job_status}")
+        if job_status == "SUCCEED":
+            print("✅ Amplify deployment succeeded")
+            break
+        if job_status in ("FAILED", "CANCELLED"):
+            print(f"❌ Amplify deployment {job_status}")
+            sys.exit(1)
+        time.sleep(15)
+        waited += 15
+    else:
+        print("❌ Timed out waiting for Amplify deployment (10 min)")
+        sys.exit(1)
+
 except Exception as e:
+    # Fail the build. This except previously printed and returned 0, so a failed
+    # UI deployment was indistinguishable from a successful one -- the seeder
+    # reported SUCCEEDED and Phase 3 echoed "Deployed to Amplify Hosting"
+    # regardless.
     print(f"❌ Deployment error: {e}")
     import traceback
     traceback.print_exc()
+    sys.exit(1)
 PYEOF`,
                             'python3 /tmp/deploy_amplify.py',
                             'echo ""',
