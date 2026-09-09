@@ -187,6 +187,11 @@ After the script completes:
 3. Log in with the demo account: `test_user@example.com` / `Password123!`
 4. Complete MFA setup when prompted (see [First Login Guide](install_docs/usage/FIRST_LOGIN.md))
 
+To add your own account, either use **Create account** on the login page or create one
+with the CLI — see [Adding Users](install_docs/usage/ADDING_USERS.md). Note a new user
+starts with no research profile, so grant matching has nothing to score against until
+they create one.
+
 ---
 
 ### Step 5: Test proposal generation end-to-end

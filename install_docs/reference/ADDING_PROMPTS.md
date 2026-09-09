@@ -45,8 +45,19 @@ The proposal generation agent looks up prompts by agency prefix. For example, if
 
 1. Add detection logic in `bc/proposal-generation-agent/agent.py` in the `detect_agency()` function
 2. Create prompt JSON files following the naming convention above
-3. Update `config/bedrock-prompts/manifest.json` to include the new prompt names
-4. Redeploy: `./installation/deploy-grow2-bootstrap.sh us-east-1`
+3. Redeploy: `./installation/deploy-grow2-bootstrap.sh us-east-1`
+
+## What `manifest.json` Is (and Is Not) For
+
+**You do not need to update `manifest.json` to deploy a new prompt.** `BedrockPromptsStack`
+reads every `.json` file in `config/bedrock-prompts/` and explicitly skips
+`manifest.json`, so a prompt file alone is enough.
+
+The manifest is read by one thing only: `python/import_bedrock_prompts.py`, a standalone
+script for copying prompts into a region outside the normal deploy — it iterates
+`manifest['prompts']` and imports each named file. If you never run that script, the
+manifest has no effect. If you do, a prompt missing from the manifest will be skipped by
+it even though CDK deploys it.
 
 ## Adding Prompts for an Existing Agency
 

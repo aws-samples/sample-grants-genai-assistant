@@ -44,7 +44,7 @@ There's no button in the app for this — it's a two-part process combining the 
 
 1. In the Bedrock console, create a new prompt named `<Agency>-Prompt-<SectionName>` (e.g., `NSF-Prompt-Budget-Justification`) — the naming convention matters, because the generation agent finds an agency's prompts by matching this prefix
 2. Write the prompt text following the same pattern as the other prompts for that agency: use `{{content}}` and `{{grant_info}}` as the injected variables, scope the instructions to ONE section only, and include the attribution requirement (`[Not sourced from your documents]`) if you want that section's content to be checked for grounding
-3. Export the new prompt into `config/bedrock-prompts/<Agency>-Prompt-<SectionName>.json` and add its name to `config/bedrock-prompts/manifest.json` so it's included in future deployments and re-imports
+3. Export the new prompt into `config/bedrock-prompts/<Agency>-Prompt-<SectionName>.json` so it is recreated on future deployments. Adding the file is enough — deployment picks up every prompt file in that directory automatically
 4. The evaluator's Completeness score automatically adjusts to the new section count for that agency — no other code changes needed
 
 ### If adding a brand-new agency

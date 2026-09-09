@@ -17,6 +17,8 @@ Complete guide for deploying the GROW2 Grant Matchmaking platform on AWS.
 
 ### Using the System
 - [First Login](usage/FIRST_LOGIN.md) - Accessing the web interface, MFA setup, and getting started
+- [Adding Users](usage/ADDING_USERS.md) - Self-signup and administrator-created Cognito accounts
+- [Manual Agent Discovery](usage/MANUAL-AGENT-DISCOVERY.md) - Trigger a discovery run by hand
 
 ### Maintenance
 - [Updating the Stack](maintenance/UPDATING.md) - Deploy updates to backend or UI
