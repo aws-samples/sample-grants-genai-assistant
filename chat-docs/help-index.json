@@ -3,7 +3,7 @@
     {
       "title": "Agent Discovery Guide",
       "filename": "agent-discovery-guide.md",
-      "description": "Guide to setting up and using autonomous grant discovery with scheduled searches across US and EU databases",
+      "description": "Guide to setting up and using autonomous grant discovery with scheduled searches across US and EU databases, including how the profile drives match scoring and how to choose effective keywords",
       "keywords": [
         "agent",
         "discovery",
@@ -15,9 +15,24 @@
         "EU grants",
         "multi-region",
         "match score",
-        "Bayesian"
+        "Bayesian",
+        "profile",
+        "researcher type",
+        "keywords",
+        "primary keywords",
+        "secondary keywords",
+        "research areas",
+        "preferred agencies",
+        "why did this grant match",
+        "improve matching",
+        "irrelevant grants",
+        "grants to surface",
+        "ranking",
+        "same score",
+        "CFDA",
+        "assistance listing"
       ],
-      "last_updated": "2026-03-04T12:00:00Z"
+      "last_updated": "2026-09-01T12:00:00Z"
     },
     {
       "title": "Knowledge Base Guide",

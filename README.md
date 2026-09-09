@@ -677,10 +677,10 @@ AgentCore agents write structured logs to CloudWatch. See [How to Read Agent Log
 Learn how GROW2's core features work:
 
 **Bayesian Matching Algorithm:**
-- How grant relevance scores are calculated
-- Factors that influence matching (keywords, career stage, agencies)
-- How the system learns from your feedback
-- Optimization tips for better matches
+- How grant relevance scores are calculated, from prior to final score
+- What actually influences matching (profile keywords and where they appear in the grant, researcher type, preferred agencies, CFDA funding directorate) — and what does not
+- Why fewer, broader keywords score better than more specific ones
+- Known limitations of the current model
 
 See [How Bayesian Matching Works](install_docs/reference/HOW_BAYESIAN_MATCHING_WORKS.md) for technical details.
 

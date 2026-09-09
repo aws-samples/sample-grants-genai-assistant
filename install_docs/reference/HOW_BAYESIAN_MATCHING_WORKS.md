@@ -5,350 +5,326 @@
 
 # How Bayesian Matching Works
 
-Technical guide to understanding GROW2's grant matching algorithm.
+Technical guide to GROW2's grant matching algorithm.
+
+Implementation: `bc/grants-search-agent-v2/bayesian_matcher.py` (US) and
+`bc/eu-grants-search-agent-v2/bayesian_matcher.py` (EU). The two are kept in sync
+except for the CFDA signal, which only exists for US grants.
 
 ---
 
 ## Overview
 
-GROW2 uses a Bayesian matching system to calculate relevance scores between your research profile and grant opportunities. This probabilistic approach determines how well a grant matches your interests, expertise, and preferences.
+Each grant is scored against a researcher profile to produce a
+`profileMatchScore` between 0 and 1. Scoring is **lexical and rule-based**: it
+matches profile terms against grant text with word-boundary regexes and combines
+the results as likelihood ratios in Bayes' theorem.
 
-**Key Benefits:**
-- Personalized grant recommendations
-- Learns from your feedback
-- Balances multiple factors (keywords, career stage, agencies)
-- Improves over time with usage
+There are no embeddings and no semantic similarity in this path. There is also no
+learning loop — the score is a pure function of the profile and the grant, so the
+same inputs always produce the same output. Changing your profile changes your
+scores immediately; nothing else does.
 
 ---
 
-## How It Works
+## The Calculation
 
-### The Bayesian Formula
-
-The system calculates relevance scores using Bayesian inference:
+Bayes' theorem in **odds form**:
 
 ```
-P(Relevant|Grant) = P(Grant|Relevant) × P(Relevant) / P(Grant)
-
-Where:
-- P(Relevant) = Prior probability based on your profile
-- P(Grant|Relevant) = Likelihood of this grant given relevance
-- P(Grant) = Overall grant probability (normalization factor)
+odds_prior     = prior / (1 - prior)
+odds_posterior = likelihood_ratio × odds_prior
+score          = odds_posterior / (1 + odds_posterior)
 ```
 
-**In simple terms:** The system combines what it knows about you (your profile) with what it learns about each grant to predict relevance.
+So there are two inputs: a **prior** from who the researcher is, and a
+**likelihood ratio** from how well the grant fits them.
+
+### The prior — who you are
+
+From `get_researcher_priors()`. Base value by `researcherType`:
+
+| Researcher type | Prior |
+|---|---|
+| `biomedical` | 0.20 |
+| `engineering` | 0.15 |
+| `computer_science` | 0.15 |
+| `basic_science` | 0.12 |
+| `social_science` | 0.10 |
+| unrecognised / unset | 0.10 |
+
+Then multiplied by `expertise_level` (`expert` 1.2, `advanced` 1.1,
+`intermediate` 1.0, `beginner` 0.9) and a further 1.1 if `early_investigator` is
+`"True"`. Capped at 0.30.
+
+The prior sets a baseline only. It cannot make an irrelevant grant relevant, and
+the type string must be one of the keys above — the Profile UI dropdown stores
+these values, so selecting from the dropdown always produces a recognised type.
+
+### The likelihood ratio — how well the grant fits
+
+The product of four groups of multipliers:
+
+1. Gated, damped **grant features**
+2. **Profile term matches**, weighted by where they appear
+3. **Preferred agency** match
+4. **CFDA directorate** alignment (US only)
+
+Each is described below. Because they multiply, a grant that matches on several
+axes can compound to a high score, and a single strong penalty can pull a
+superficially relevant grant down.
 
 ---
 
-## Matching Factors
+## 1. Grant features
 
-The algorithm considers multiple factors, each with different weights:
+`extract_grant_features()` derives ~20 booleans from the grant's title, agency and
+description — `isNIH`, `isCancer`, `isAI`, `isEducation`, `hasLargeAmount` and so
+on. Each present feature contributes a likelihood ratio from
+`get_feature_likelihoods()`, mostly in the 1.7x–2.5x range, with `isEmbassy` a
+0.3x penalty and `hasSmallAmount` a mild 0.88x one.
 
-### 1. Keyword Overlap (40% weight)
+Two corrections make this behave sensibly.
 
-**What it does:**
-- Compares keywords in your profile with grant text
-- Uses AI embeddings for semantic similarity
-- Recognizes technical terms and domain-specific language
+### Word-boundary matching
 
-**Example:**
-- Your keywords: "machine learning", "healthcare", "diagnostics"
-- Grant mentions: "AI-powered clinical decision support"
-- Result: High keyword score due to semantic similarity
+Term tests use `_term_matches()`, which wraps each term in `\b...\b`. The earlier
+code used a bare `term in text` substring test, so the term `'ai'` matched inside
+"tr**ai**ning", "Ukr**ai**ne", "av**ai**lable", "dom**ai**n" and "cert**ai**n".
+Measured against 100 live grants.gov records, `isAI` fired on 14 of them and
+**every one was a false positive**.
 
-**How to optimize:**
-- Use specific technical terms, not general ones
-- Include synonyms and related terms
-- Update keywords as your research evolves
+### Profile gating
 
----
+A domain feature only counts if the profile gives a reason to care about it.
+`gate_features()` checks each feature's entry in `FEATURE_GATES` against the
+profile's own text, and zeroes it out on no match. So `isCancer` no longer
+rewards a cancer grant when the researcher does machine learning.
 
-### 2. Research Area Alignment (25% weight)
+This was the central design error in the original model: features were
+**absolute**, describing the grant in isolation, not **relative** to the
+researcher. `isBiomedical` fired on 93 of those same 100 live grants — a feature
+that matches almost everything cannot discriminate between anything.
 
-**What it does:**
-- Matches your research areas with grant focus areas
-- Gives bonus for interdisciplinary grants
-- Detects emerging fields
+Agency features (`isNSF`, `isNIH`, `isDOD`, `isDOE`) are gated on the profile's
+preferred agencies. Genuine grant characteristics that are independent of the
+researcher — `isSmallBusiness`, `isInternational`, `isEmbassy`, and the three
+amount features — are never gated, and are listed in `UNGATED_FEATURES`.
 
-**Example:**
-- Your area: "Artificial Intelligence"
-- Grant focus: "AI in Healthcare"
-- Result: High alignment score
+### Damping
 
-**How to optimize:**
-- Select all relevant research areas
-- Include interdisciplinary areas
-- Update as you explore new directions
+Features that still fire broadly are pulled toward 1.0 via `FEATURE_DAMPING`
+rather than deleted, since they carry some signal:
 
----
-
-### 3. Career Stage Fit (20% weight)
-
-**What it does:**
-- Matches grants to your career level
-- Considers appropriate funding levels
-- Identifies early investigator programs
-
-**Career stages:**
-- Graduate Student
-- Postdoctoral Researcher
-- Early Career Faculty
-- Mid-Career Faculty
-- Senior Researcher
-
-**Example:**
-- Your stage: "Early Career Faculty"
-- Grant: "NSF CAREER Award"
-- Result: Perfect career stage match
-
-**How to optimize:**
-- Keep career stage current
-- Look for stage-specific programs
-- Consider transition grants
+| Feature | Retained | Because it also matches |
+|---|---|---|
+| `isEngineering` | 30% | "technology" |
+| `isBasicScience` | 30% | "mathematics", "statistics" |
+| `isEducation` | 40% | "training" |
+| `isInternational` | 40% | "global" |
+| `isBiomedical` | 50% | `isCancer` carries the specificity |
 
 ---
 
-### 4. Agency Preference (10% weight)
+## 2. Profile term matching
 
-**What it does:**
-- Weights grants from your preferred agencies
-- Considers historical success patterns
-- Aligns with agency missions
+The part that makes profile edits matter.
 
-**Example:**
-- Your preferences: NIH, NSF
-- Grant agency: NIH
-- Result: Preference bonus applied
+Each of `keywords`, `research_areas` and `optimized_keywords` is scored on the
+**fraction** of its terms found in the grant, and the multiplier scales with that
+fraction — reaching the maximum only on a full match.
 
-**How to optimize:**
-- Select agencies you're eligible for
-- Include agencies you've worked with before
-- Update based on success patterns
+| Profile field | Max in TITLE | Max in body only |
+|---|---|---|
+| `keywords` | 4.00x | 1.40x |
+| `research_areas` | 2.50x | 1.25x |
+| `optimized_keywords` | 2.00x | 1.15x |
 
----
+**Title placement dominates deliberately.** A grant whose title names your field
+is about your field; one that lists your field among thirty eligible topics in
+its description is not. Two live NSF examples, TCUP and CAMEL, both contain
+"artificial intelligence" and "machine learning" — in eligibility boilerplate.
+Both previously outranked grants with AI in the title.
 
-### 5. Eligibility Compliance (5% weight)
+**Multi-word terms get partial credit.** `term_credit()` returns 1.0 for an exact
+phrase match, or 0.6 if every significant word appears somewhere (adjacency not
+required), so "autonomous agents" earns partial credit from a grant about
+"autonomous systems". Requiring *all* significant words is what stops "AI agents"
+matching "agents of change". Terms whose words are all weak in isolation
+(`_WEAK_ALONE`: "data", "systems", "models", "learning", …) get no partial credit.
 
-**What it does:**
-- Checks institution type requirements
-- Verifies geographic restrictions
-- Considers collaboration requirements
+### Why fewer keywords score higher
 
-**Example:**
-- Your institution: "University"
-- Grant requirement: "Academic institutions only"
-- Result: Eligible, no penalty
-
-**How to optimize:**
-- Keep institution information current
-- Note any special eligibility factors
-- Review grant requirements carefully
-
----
-
-## Real-Time Learning
-
-The system improves its recommendations based on your behavior:
-
-### User Feedback
-- **Mark as relevant:** Increases weight for similar grants
-- **Mark as irrelevant:** Decreases weight for similar grants
-- **Save/bookmark:** Signals strong interest
-- **Apply:** Strongest positive signal
-
-### Application Tracking
-- Success rates with different grant types
-- Preferred funding amounts
-- Timeline preferences
-- Collaboration patterns
-
-### Profile Updates
-- New keywords automatically update matching
-- Research area changes refine recommendations
-- Career stage transitions adjust targeting
-
-### Behavioral Patterns
-- Which grants you view
-- How long you spend reviewing
-- Which sections you read
-- Download and save patterns
+Because credit is a **fraction of terms supplied**, adding a term that never
+appears in grant text lowers every score. Two matches out of six beats two out of
+twelve. This inverts the advice the UI and docs previously gave, and it is the
+single most useful thing to tell a user: prefer the broad terms that appear in
+grant titles over precise terms from your subfield.
 
 ---
 
-## Match Score Interpretation
+## 3. Preferred agencies
 
-### Score Ranges
+`agency_match_fraction()` matches the profile's `agencies` against the grant's
+**agency field only**, up to 1.50x. Previously a stray mention of "NSF" anywhere
+in a description counted as an agency preference match.
 
-| Score | Meaning | Action |
-|-------|---------|--------|
-| 0.8 - 1.0 | Excellent match | Strongly consider applying |
-| 0.6 - 0.8 | Good match | Review carefully |
-| 0.4 - 0.6 | Moderate match | May be worth exploring |
-| 0.2 - 0.4 | Weak match | Probably not relevant |
-| 0.0 - 0.2 | Poor match | Skip |
-
-### What Affects Scores
-
-**High scores (0.8+):**
-- Strong keyword overlap
-- Perfect career stage fit
-- Preferred agency
-- Research area alignment
-- Eligibility match
-
-**Low scores (< 0.4):**
-- Few keyword matches
-- Wrong career stage
-- Unfamiliar agency
-- Different research area
-- Eligibility issues
+Matching goes through `AGENCY_ALIASES`, because a profile says `NSF` while
+grants.gov says "U.S. National Science Foundation" — neither substring nor
+word-boundary matching connects those. Before the alias map, preferred-agency
+matching silently did nothing for NSF, NIH, DOD or DARPA.
 
 ---
 
-## Optimization Tips
+## 4. CFDA directorate alignment (US only)
 
-### For Better Matches
+The strongest domain signal grants.gov exposes. CFDA / Assistance Listing program
+titles name the **funding directorate** and are short and curated, where
+descriptions are long and full of boilerplate.
 
-1. **Use Specific Keywords**
-   - ❌ Bad: "research", "science", "study"
-   - ✅ Good: "CRISPR", "gene editing", "genomics"
+The four grants that dominated a CS/AI profile's results before this signal
+existed:
 
-2. **Complete Your Profile**
-   - Fill in all sections
-   - Add multiple research areas
-   - List all relevant agencies
-   - Keep career stage current
+| Grant | CFDA program title | Actual field |
+|---|---|---|
+| TCUP | 47.076 STEM Education | education |
+| CAMEL | 47.075 Social, Behavioral, and Economic Sciences | social science |
+| Sociology | 47.075 Social, Behavioral, and Economic Sciences | social science |
+| IUSE | 47.041 Engineering + 47.076 STEM Education | education |
 
-3. **Provide Feedback**
-   - Mark grants as relevant/irrelevant
-   - The system learns from your choices
-   - More feedback = better matches
+All four mention AI or ML in prose. None sits in 47.070, Computer and Information
+Science and Engineering, where a CS researcher's grants actually live.
 
-4. **Update Regularly**
-   - Review profile quarterly
-   - Add new keywords as research evolves
-   - Update career stage when appropriate
-   - Adjust agency preferences based on success
+`cfda_signal()` reads the researcher's domain from their profile
+(`PROFILE_DOMAIN_TERMS`), the grant's domain from its CFDA titles
+(`CFDA_DOMAIN_TERMS`), and compares:
 
-5. **Use Multiple Profiles**
-   - Create separate profiles for different research directions
-   - Each profile gets independent matching
-   - Useful for interdisciplinary researchers
+| Outcome | Multiplier |
+|---|---|
+| Aligned | up to 3.00x, scaled by the fraction of grant domains that match |
+| Adjacent | 0.75x |
+| Unrelated | 0.35x |
+| Catch-all title, or either domain unknown | 1.00x |
 
----
+**Adjacency** exists because some fields genuinely overlap — CISE is literally
+"Computer and Information Science **and Engineering**", and CS researchers
+routinely hold NSF Engineering awards. An engineering grant is not wrong for a CS
+profile the way a social-science one is. Pairs are in `DOMAIN_ADJACENCY`.
 
-## Technical Implementation
+**Catch-all detection** matters for DOD, whose 12.630 "Basic, Applied, and
+Advanced Research in Science and Engineering" covers everything DOD funds.
+Inferring "engineering" from it and penalising a CS researcher would be wrong, so
+`CFDA_CATCHALL_PATTERNS` maps these to neutral rather than to another field.
 
-### AI/ML Components
-
-**Bedrock Integration:**
-- Uses Amazon Bedrock for AI-powered text analysis
-- Claude models for semantic understanding
-- Embeddings for similarity calculations
-
-**Vector Embeddings:**
-- Converts text to numerical vectors
-- Enables semantic similarity matching
-- Captures meaning beyond exact keywords
-
-**DynamoDB Storage:**
-- Fast retrieval of matching scores
-- Historical data for learning
-- User feedback tracking
-
-**Real-time Updates:**
-- Scores recalculated when profiles change
-- AppSync subscriptions for live updates
-- Efficient caching for performance
+CFDA titles reach the scorer through the grant's `tags` field, populated by
+`extract_cfda_titles()` in the search agent. When absent the signal is neutral,
+so this degrades safely.
 
 ---
 
-## Performance Metrics
+## Score interpretation
 
-The system tracks its own performance:
+Scores are **relative, not absolute** — a ranking within one run, not a fixed
+grade.
 
-### Precision
-Percentage of high-scored grants that are actually relevant
-- **Target:** > 70%
-- **Measured by:** User feedback on recommendations
+| Score | Meaning |
+|---|---|
+| 70%+ | Strong — the researcher's field and preferred funders |
+| 50–69% | Solid, worth reviewing |
+| 30–49% | Partial, usually a related but different field |
+| 20–29% | Weak, cleared the floor |
+| < 20% | Filtered out (`MIN_PROFILE_MATCH_SCORE = 0.20`) |
 
-### Recall
-Percentage of relevant grants that receive high scores
-- **Target:** > 80%
-- **Measured by:** Grants users apply to vs. grants found
+How high a profile *can* score depends on how grants in its field are written.
+Oncology grant titles contain "Cancer" and "Clinical Trials" literally, so a
+biomedical profile scores higher than a CS one on the same pool. Compare within a
+run, not across profiles.
 
-### User Satisfaction
-Based on feedback and application rates
-- **Target:** > 75% satisfaction
-- **Measured by:** Surveys and usage patterns
+### Selection
 
-### Discovery Rate
-New relevant grants found over time
-- **Target:** Consistent discovery of new opportunities
-- **Measured by:** Unique grants surfaced per week
+`consolidate_results()` in `amplify/functions/agent-discovery-search/handler.py`
+drops everything below 0.20, sorts by score descending, and takes the top
+`grantsSurfaced` **per region** — so a setting of 2 surfaces up to 4 grants, 2 US
+and 2 EU.
 
----
-
-## Comparison with Keyword Search
-
-### Bayesian Matching Advantages
-
-| Feature | Keyword Search | Bayesian Matching |
-|---------|---------------|-------------------|
-| Personalization | None | High |
-| Learning | No | Yes |
-| Semantic understanding | Limited | Advanced |
-| Career stage awareness | No | Yes |
-| Agency preferences | No | Yes |
-| Improves over time | No | Yes |
-
-### When to Use Each
-
-**Use Bayesian Matching (Agent Discovery) when:**
-- You want personalized recommendations
-- You have a complete profile
-- You want the system to learn your preferences
-- You're exploring new opportunities
-
-**Use Keyword Search when:**
-- You're looking for something specific
-- You want full control over search terms
-- You're exploring outside your usual areas
-- You need quick, broad results
+Ties fall back to Python's stable sort, i.e. DynamoDB return order. Note the UI
+rounds to whole percent, so grants displayed with the same percentage are usually
+still ordered correctly against each other.
 
 ---
 
-## Frequently Asked Questions
+## Verified behaviour
 
-### Why did I get a low score for a grant I'm interested in?
+Measured live in `us-east-2` against real grants.gov data.
 
-The system doesn't know you're interested until you tell it! Mark the grant as relevant, and similar grants will score higher in the future.
+**A CS/AI profile's top results, before and after:**
 
-### Can I see why a grant got a specific score?
+| Before | After |
+|---|---|
+| TCUP (96%) | AI Infrastructure Hubs (80%) |
+| CAMEL (96%) | Integrated Data Systems (80%) |
+| Sociology (96%) | AI Datasets (74%) |
+| IUSE (95%) | Expeditions in Computing (74%) |
+| Tactical Autonomous (94%) | Tactical Autonomous (71%) |
 
-Currently, scores are composite. Future versions may show factor breakdowns (keyword: 0.8, career stage: 0.6, etc.).
+Every original result except the last was an education or social-science grant.
+The uniform 94–96% band is itself the tell: scores that high, that close, on
+grants that unrelated, mean the profile was barely affecting the outcome.
 
-### How long does it take for the system to learn?
+**Mean rank of CISE-directorate grants** for that profile, across a 50-grant live
+sample: **25.4 → 4.2**.
 
-You'll see improvements after 5-10 feedback actions. Significant learning happens after 20-30 interactions.
-
-### Does the system share my data?
-
-No. All matching happens within your AWS account. Your profile and preferences are private.
-
-### Can I reset the learning?
-
-Yes, by creating a new profile. The system starts fresh with no historical data.
-
----
-
-## Additional Resources
-
-- [User Profiles Guide](../usage/FIRST_LOGIN.md#step-8-complete-your-researcher-profile-new-accounts-only) - Setting up your profile
-- [Agent Configuration](../usage/FIRST_LOGIN.md) - Autonomous discovery setup
-- [Monitoring Guide](../maintenance/MONITORING.md) - Understanding match scores in logs
+**Cross-profile check.** The changes were validated on CS, biomedical, education
+and climate profiles before landing, to confirm they generalise rather than
+overfit to the CS case that surfaced the bug.
 
 ---
 
-**Last Updated:** February 4, 2026  
-**Version:** 1.0
+## What is not used in scoring
+
+Stored on the profile, and useful to a human reader, but not read by the scorer:
+
+- Budget range and project duration
+- Geographic scope
+- Methodologies and technical skills
+- Institution type and eligibility
+
+There is also **no feedback mechanism**. Marking a grant as relevant or
+irrelevant, bookmarking, viewing and applying have no effect on future scores,
+because no such signal is collected or consumed. To change results, change the
+profile.
+
+---
+
+## Known limitations
+
+- **Score compression on strong matches.** A profile that matches its field
+  closely can produce several grants in the high 90s, at which point the score
+  stops discriminating within the relevant set. Caused by unbounded multiplicative
+  compounding, which damping reduced but did not remove.
+- **Near-duplicate grants.** `deduplicate_grants()` matches on exact `grantId`
+  only, so sibling opportunities from one program family can occupy several of
+  the surfaced slots.
+- **No tie-breaker.** Equal scores resolve to DynamoDB order, which is not
+  guaranteed stable between runs.
+- **EU grants have no directorate signal.** There is no CFDA equivalent in the EU
+  data. `EuGrantRecord` has `euKeywords` fields that the EU agent never populates,
+  which is the natural place to add one.
+- **Lexical matching only.** A grant using vocabulary the profile does not contain
+  will not match, however conceptually close it is.
+
+---
+
+## Related documentation
+
+- [Agent Discovery Guide](../../chat-docs/agent-discovery-guide.md) — user-facing
+  guide, including how to choose keywords
+- [User Profiles](../usage/FIRST_LOGIN.md#step-8-complete-your-researcher-profile-new-accounts-only)
+- [Monitoring Guide](../maintenance/MONITORING.md) — the scorer logs its prior,
+  every matched feature with its damped ratio, each profile boost with the terms
+  that triggered it, and the CFDA decision with its reason
+
+---
+
+**Last Updated:** September 1, 2026
+**Version:** 2.0

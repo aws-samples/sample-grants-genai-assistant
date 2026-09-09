@@ -185,16 +185,25 @@ If you created a new account, you'll need to set up your researcher profile:
 
 1. Click **"Profile"** or **"Get Started"**
 
-2. Fill in your information:
-   - **Name** - Your full name
-   - **Institution** - Your university or organization
-   - **Research Interests** - Keywords describing your research
-   - **Expertise Areas** - Your fields of study
-   - **Career Stage** - Graduate student, postdoc, faculty, etc.
+2. Fill in your information. The fields marked as critical in the UI are the ones that drive grant matching:
+   - **Researcher Type** - Biomedical, Engineering, Computer Science, Basic Science or Social Science. Sets your baseline relevance and decides which research domains can contribute to your scores at all
+   - **Expertise Level** and **Early Career Investigator** - small adjustments to that baseline
+   - **Research Areas** - your broader domains
+   - **Primary Keywords (Search Terms)** - these both drive the searches and carry the strongest matching weight
+   - **Secondary Keywords (Fine-Tuning)** - related terms, weighted lower
+   - **Preferred Funding Agencies** - matched against each grant's funding agency
 
 3. Click **"Save Profile"**
 
-Your profile helps the AI agents find relevant grants for you.
+> **Use broad keywords, not narrow ones.** Each grant is scored on the *fraction*
+> of your keywords it contains, so a term that never appears in real grant text
+> lowers your scores rather than adding to them. Prefer "artificial intelligence"
+> over "neuro-symbolic reasoning". A keyword in a grant's **title** counts for far
+> more than one buried in its description.
+
+Your profile is what the discovery agent matches grants against — see
+[How Bayesian Matching Works](../reference/HOW_BAYESIAN_MATCHING_WORKS.md) for the
+full scoring model, or the in-app **Agent Discovery Guide** for the short version.
 
 ---
 
