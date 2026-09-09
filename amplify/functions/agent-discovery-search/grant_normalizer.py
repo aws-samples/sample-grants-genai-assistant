@@ -25,6 +25,13 @@ def normalize_us_grant(grant: Dict[str, Any]) -> Dict[str, Any]:
             'deadline': grant.get('deadline', ''),
             'closeDate': grant.get('closeDate', ''),
             'description': grant.get('description', ''),
+            # Why this grant matched, from the scorer. This normalizer rebuilds the
+            # grant from an explicit field list, so anything omitted here is
+            # invisible downstream even though it survives under '_original' —
+            # which is exactly how matchedKeywords reached the UI as [] despite
+            # being correctly populated in DynamoDB.
+            'matchedKeywords': [str(k) for k in (grant.get('matchedKeywords') or [])],
+            'tags': [str(t) for t in (grant.get('tags') or [])],
             'source': 'US',
             'sourceTable': 'GrantRecord',
             # Preserve all original fields for S3 storage
@@ -62,6 +69,9 @@ def normalize_eu_grant(grant: Dict[str, Any]) -> Dict[str, Any]:
             'deadline': grant.get('deadline', ''),
             'closeDate': grant.get('deadline', ''),  # EU uses deadline field
             'description': grant.get('description', ''),
+            # See the note in normalize_us_grant — omitted fields are dropped here.
+            'matchedKeywords': [str(k) for k in (grant.get('matchedKeywords') or [])],
+            'tags': [str(t) for t in (grant.get('tags') or [])],
             'source': 'EU',
             'sourceTable': 'EuGrantRecord',
             # EU-specific fields
