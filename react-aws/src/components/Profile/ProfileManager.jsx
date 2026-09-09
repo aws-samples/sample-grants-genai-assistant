@@ -8,24 +8,36 @@ import outputs from '../../amplify_outputs.json';
 Amplify.configure(outputs);
 const client = generateClient();
 
-// Field importance for Bayesian matching
+// Field importance for Bayesian matching.
+//
+// Ordinal only — deliberately NO percentages. The matcher combines signals
+// multiplicatively (see calculate_bayesian_probability in
+// bc/*/bayesian_matcher.py), so any single field's real contribution depends on
+// how many other signals fire for that particular grant. A fixed percentage is
+// therefore never accurate.
+//
+// These labels previously advertised "15%" for keywords and "8%" for agencies
+// while the code applied 1.08x and 1.04x — and applied them merely for the list
+// being NON-EMPTY, without comparing the terms to the grant at all. The scoring
+// is fixed (terms are now matched against the grant text and scaled by how much
+// matches), but stating a precise percentage would just re-create the same drift.
 const fieldImportance = {
-  // Highest impact - 15% boost
-  'keywords': { level: 'highest', boost: '15%', color: '#dc3545' },
+  // Drives search queries AND contributes the largest matching signal
+  'keywords': { level: 'highest', color: '#dc3545' },
 
-  // High impact - 8% boost  
-  'agencies': { level: 'high', boost: '8%', color: '#fd7e14' },
+  // Preferred funders — matched against the grant's agency
+  'agencies': { level: 'high', color: '#fd7e14' },
 
-  // Medium impact - sets base probability
-  'researcherType': { level: 'medium', boost: 'base', color: '#ffc107' },
-  'expertise_level': { level: 'medium', boost: 'multiplier', color: '#ffc107' },
+  // Set the base probability and its multiplier
+  'researcherType': { level: 'medium', color: '#ffc107' },
+  'expertise_level': { level: 'medium', color: '#ffc107' },
 
-  // Lower impact - 5-10% boost
-  'optimized_keywords': { level: 'lower', boost: '5%', color: '#20c997' },
-  'early_investigator': { level: 'lower', boost: '10%', color: '#20c997' },
+  // Refine matching
+  'optimized_keywords': { level: 'lower', color: '#20c997' },
+  'early_investigator': { level: 'lower', color: '#20c997' },
 
-  // Context only - not directly scored
-  'research_areas': { level: 'context', boost: 'context', color: '#6c757d' }
+  // Broad domain signal — now genuinely scored (was previously read and ignored)
+  'research_areas': { level: 'context', color: '#6c757d' }
 };
 
 const getFieldImportance = (fieldName) => fieldImportance[fieldName];
@@ -44,11 +56,11 @@ const CriticalFieldWrapper = ({ children, fieldName, label }) => {
   }
 
   const labels = {
-    'highest': '🔥 HIGHEST IMPACT',
-    'high': '⭐ HIGH IMPACT',
-    'medium': '📊 MEDIUM IMPACT',
-    'lower': '✓ HELPFUL',
-    'context': 'ℹ️ CONTEXT'
+    'highest': '🔥 STRONGEST MATCH SIGNAL',
+    'high': '⭐ STRONG SIGNAL',
+    'medium': '📊 SETS BASELINE',
+    'lower': '✓ REFINES MATCHING',
+    'context': 'ℹ️ BROAD SIGNAL'
   };
 
   return (
@@ -74,7 +86,7 @@ const CriticalFieldWrapper = ({ children, fieldName, label }) => {
         fontSize: '11px',
         fontWeight: 'bold'
       }}>
-        {labels[importance.level]} ({importance.boost})
+        {labels[importance.level]}
       </div>
       <label style={{
         display: 'block',
@@ -649,12 +661,15 @@ const ProfileManager = () => {
         <h4 style={{ margin: '0 0 15px 0', color: '#1976d2' }}>🧠 How Intelligent Grant Matching Works</h4>
 
         <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#333', lineHeight: '1.6' }}>
-          Our Bayesian algorithm analyzes grants and scores them based on your profile. Each field has a different weight:
+          A Bayesian algorithm scores each grant against your profile. Fields contribute
+          different amounts, and each one counts <strong>only to the extent its terms actually
+            appear in the grant</strong> — matching two of your six keywords contributes less than
+          matching all six.
         </p>
 
         <div style={{ fontSize: '13px', color: '#555', marginBottom: '15px' }}>
           <div style={{ marginBottom: '8px' }}>
-            <strong style={{ color: '#dc3545' }}>🔥 Keywords (15% boost):</strong> Your PRIMARY research terms. Use <strong>broad, common terms</strong> that appear in grant titles/descriptions.
+            <strong style={{ color: '#dc3545' }}>🔥 Keywords — strongest signal:</strong> Your PRIMARY research terms. Use <strong>broad, common terms</strong> that appear in grant titles/descriptions.
             <div style={{ marginLeft: '20px', fontSize: '12px', color: '#666', marginTop: '4px' }}>
               ✅ Good: "artificial intelligence", "AI", "machine learning", "cybersecurity"<br />
               ❌ Too narrow: "knowledge graphs", "semantic reasoning", "kill chain"<br />
@@ -663,22 +678,23 @@ const ProfileManager = () => {
           </div>
 
           <div style={{ marginBottom: '8px' }}>
-            <strong style={{ color: '#fd7e14' }}>⭐ Preferred Agencies (8% boost):</strong> Funding sources you want to target (e.g., NSF, NIH, DARPA).
+            <strong style={{ color: '#fd7e14' }}>⭐ Preferred Agencies — strong signal:</strong> Funding sources you want to target (e.g., NSF, NIH, DARPA). Matched against the grant's funding agency.
           </div>
 
           <div style={{ marginBottom: '8px' }}>
-            <strong style={{ color: '#ffc107' }}>📊 Researcher Type & Expertise:</strong> Sets your base probability (18-20%) and applies multipliers.
+            <strong style={{ color: '#ffc107' }}>📊 Researcher Type &amp; Expertise:</strong> Set your starting probability and its multiplier, before any grant-specific matching.
           </div>
 
           <div style={{ marginBottom: '8px' }}>
-            <strong style={{ color: '#20c997' }}>✓ Optimized Keywords (5% boost):</strong> SECONDARY terms for fine-tuning. These add a small boost.
-            <div style={{ marginLeft: '20px', fontSize: '12px', color: '#666', marginTop: '4px' }}>
-              Use for: Related terms, synonyms, or specific techniques
-            </div>
+            <strong style={{ color: '#20c997' }}>✓ Secondary Keywords — refines matching:</strong> Related terms, synonyms, or specific techniques. Smaller contribution than primary keywords.
           </div>
 
           <div style={{ marginBottom: '8px' }}>
-            <strong style={{ color: '#20c997' }}>✓ Early Investigator (10% boost):</strong> Additional boost if you're early career.
+            <strong style={{ color: '#6c757d' }}>ℹ️ Research Areas — broad signal:</strong> Your general domains. Broader than keywords, so it contributes less per match.
+          </div>
+
+          <div style={{ marginBottom: '8px' }}>
+            <strong style={{ color: '#20c997' }}>✓ Early Investigator:</strong> Applies a small multiplier if you're early career.
           </div>
         </div>
 
@@ -690,16 +706,19 @@ const ProfileManager = () => {
           fontSize: '13px',
           color: '#856404'
         }}>
-          <strong>💡 Pro Tip:</strong> Keywords and Optimized Keywords work TOGETHER. The algorithm:
+          <strong>💡 How the score is built:</strong>
           <ol style={{ margin: '8px 0 0 20px', paddingLeft: '0' }}>
-            <li>Extracts grant features (agency, domain, AI mentions, etc.)</li>
-            <li>Calculates base score from features</li>
-            <li>Applies 8% boost if Keywords present</li>
-            <li>Applies 3% boost if Optimized Keywords present</li>
-            <li>Applies 4% boost if Preferred Agencies match</li>
+            <li>Start from a base probability set by your researcher type and expertise level</li>
+            <li>Detect general grant features (funding agency, research domain, award size)</li>
+            <li>Match your keywords, research areas and preferred agencies against the grant's
+              title, agency and description — scaled by <strong>how many</strong> of your terms
+              are found</li>
+            <li>Combine everything into a final match percentage</li>
           </ol>
           <div style={{ marginTop: '8px' }}>
-            <strong>Result:</strong> Grants matching your profile can score 50-70%, well above the 20% threshold!
+            Because the signals combine multiplicatively, no single field has a fixed percentage
+            value — its real influence depends on what else the grant matches. Grants must clear
+            a minimum match score to be surfaced by agent discovery.
           </div>
         </div>
       </div>
@@ -854,7 +873,7 @@ const ProfileManager = () => {
 
         <CriticalFieldWrapper fieldName="keywords" label="Primary Keywords (Search Terms)">
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', lineHeight: '1.5' }}>
-            <strong>Use BROAD terms that appear in grant titles.</strong> These drive your searches AND boost matching scores by 8%.
+            <strong>Use BROAD terms that appear in grant titles.</strong> These drive your searches AND contribute the strongest matching signal — for each grant, they count in proportion to how many of these terms it actually contains.
             <br />Examples: "artificial intelligence", "AI", "machine learning", "cybersecurity", "data science"
             <br /><span style={{ color: '#dc3545', fontWeight: 'bold' }}>⚠️ Keep phrases to 3 words or less</span> - longer phrases will be truncated
           </div>
@@ -881,7 +900,7 @@ const ProfileManager = () => {
 
         <CriticalFieldWrapper fieldName="optimized_keywords" label="Secondary Keywords (Fine-Tuning)">
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', lineHeight: '1.5' }}>
-            <strong>Optional:</strong> Add related terms, synonyms, or specific techniques for fine-tuning. Adds 3% boost.
+            <strong>Optional:</strong> Add related terms, synonyms, or specific techniques for fine-tuning. Smaller contribution than primary keywords.
             <br />Examples: "deep learning", "neural networks", "threat detection", "information security"
             <br /><span style={{ color: '#dc3545', fontWeight: 'bold' }}>⚠️ Keep phrases to 3 words or less</span> - longer phrases will be truncated
           </div>
