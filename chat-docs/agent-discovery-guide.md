@@ -81,7 +81,6 @@ Your **Current Configuration** summary is shown at the bottom of the page so you
    - Agency and program
    - Deadline date
    - Funding amount
-   - Why it matched (keywords, research areas)
 
 ### Understanding Match Scores
 
