@@ -81,6 +81,9 @@ Your **Current Configuration** summary is shown at the bottom of the page so you
    - Agency and program
    - Deadline date
    - Funding amount
+   - **Why this matched** — the profile terms found in the grant, and where. A term
+     found in the grant's title is a much stronger signal than the same term in the
+     description, so the list says which it was
 
 ### Understanding Match Scores
 
@@ -166,9 +169,14 @@ The agent searches both sources automatically — no separate configuration need
 
 ### "All my results have nearly the same score"
 
-Expected when your field is a strong match — several grants can reach the high 90s and
-the displayed percentage is rounded, so grants shown as equal are usually still ranked
-correctly against each other. Compare the grants themselves rather than the numbers.
+Expected when your field is a strong match. Several grants can reach the high 90s,
+and the displayed percentage is rounded, so grants shown as equal are usually still
+ranked correctly against each other.
+
+Use the **Why this matched** list rather than the percentage to tell them apart. A
+grant matching in its title is a better fit than one matching only in its
+description, even when both display the same number. Where two grants really are
+equal, the one with the closer deadline is shown first.
 
 ### "Agent not running"
 

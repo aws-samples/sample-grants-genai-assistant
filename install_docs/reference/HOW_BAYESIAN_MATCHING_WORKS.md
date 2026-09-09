@@ -243,13 +243,65 @@ run, not across profiles.
 ### Selection
 
 `consolidate_results()` in `amplify/functions/agent-discovery-search/handler.py`
-drops everything below 0.20, sorts by score descending, and takes the top
+drops everything below 0.20, ranks with `rank_grants()`, and takes the top
 `grantsSurfaced` **per region** — so a setting of 2 surfaces up to 4 grants, 2 US
 and 2 EU.
 
-Ties fall back to Python's stable sort, i.e. DynamoDB return order. Note the UI
-rounds to whole percent, so grants displayed with the same percentage are usually
-still ordered correctly against each other.
+`rank_grants()` sorts by score descending, with the **sooner deadline** breaking
+ties. Discovery runs on a schedule, so a grant closing in 300 days will be
+surfaced again next run while one closing in 20 days may not be; among equals,
+prefer the one where waiting costs the opportunity. Unknown, unparseable and
+already-expired deadlines sort last. Both date formats are accepted, since
+grants.gov emits `MM/DD/YYYY` and the EU agent formats as `YYYY-MM-DD`.
+
+Note the UI rounds to whole percent, so grants displayed with the same percentage
+are usually still ordered correctly against each other.
+
+---
+
+## Why a grant matched
+
+A single percentage is a poor discriminator near the top of the range. Because the
+score maps an unbounded likelihood ratio through `odds / (1 + odds)`, it saturates:
+
+| Likelihood ratio | Score (prior 0.15) |
+|---|---|
+| 50x | 89.8% |
+| 100x | 94.6% |
+| 200x | 97.2% |
+| 400x | 98.6% |
+
+Inverting that shows how much detail one displayed percent conceals:
+
+| Displayed | Underlying evidence | Spread |
+|---|---|---|
+| 80% | 22.0x .. 23.4x | 1.06x |
+| 94% | 81.5x .. 97.4x | 1.19x |
+| 97% | 156.2x .. 221.0x | 1.41x |
+| 99% | 372.1x .. 1127.7x | 3.03x |
+
+So two grants both showing 97% can differ by 1.4x in evidence. They are ordered
+correctly; the display simply cannot show it.
+
+Pass a dict as `explain=` to `calculate_bayesian_probability()` to get the reasons
+back under `matchedKeywords`:
+
+```
+artificial intelligence (in title)
+NSF (preferred agency)
+47.070 Computer and Information Science and Engineering (funding program)
+machine learning (in description)
+```
+
+Ordered strongest signal first — title matches, preferred agency, funding program,
+then description matches — deduplicated across profile fields and capped at
+`MATCH_REASON_LIMIT`. Only positive signals are listed, since the field means what
+matched: a grant penalised for a misaligned funding directorate reports no program
+match rather than a negative one.
+
+`explain=` is optional, so callers that only want the score are unaffected. The
+values are persisted to `matchedKeywords` on both `GrantRecord` and
+`EuGrantRecord` and rendered on each grant card.
 
 ---
 
@@ -301,12 +353,15 @@ profile.
 - **Score compression on strong matches.** A profile that matches its field
   closely can produce several grants in the high 90s, at which point the score
   stops discriminating within the relevant set. Caused by unbounded multiplicative
-  compounding, which damping reduced but did not remove.
+  compounding, which damping reduced but did not remove. The `matchedKeywords`
+  reasons work around this by exposing the evidence directly; fixing it properly
+  means capping the likelihood ratio or reshaping the probability mapping, which
+  would move every score and so wants calibrating against live data first.
 - **Near-duplicate grants.** `deduplicate_grants()` matches on exact `grantId`
   only, so sibling opportunities from one program family can occupy several of
-  the surfaced slots.
-- **No tie-breaker.** Equal scores resolve to DynamoDB order, which is not
-  guaranteed stable between runs.
+  the surfaced slots. Observed live: three of five US results were NCORP Research
+  Bases, Community Sites and Academic Community Sites — three sibling NOFOs of one
+  NCI program.
 - **EU grants have no directorate signal.** There is no CFDA equivalent in the EU
   data. `EuGrantRecord` has `euKeywords` fields that the EU agent never populates,
   which is the natural place to add one.
