@@ -80,7 +80,7 @@ const schema = a
       // Owner-scoped. Was [allow.authenticated(), allow.publicApiKey()], which
       // let any holder of the long-lived public API key read and write every
       // user's profile PII, and let any authenticated user read every other
-      // user's. See SECURITY.md.
+      // user's.
       //
       // ownerDefinedIn('userId') reuses the existing userId field rather than
       // introducing an implicit `owner` field, so records already in DynamoDB
