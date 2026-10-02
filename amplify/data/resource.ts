@@ -77,7 +77,22 @@ const schema = a
         last_updated: a.string(),
         orcid_id: a.string(),
       })
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      // Owner-scoped. Was [allow.authenticated(), allow.publicApiKey()], which
+      // let any holder of the long-lived public API key read and write every
+      // user's profile PII, and let any authenticated user read every other
+      // user's. See SECURITY.md.
+      //
+      // ownerDefinedIn('userId') reuses the existing userId field rather than
+      // introducing an implicit `owner` field, so records already in DynamoDB
+      // stay accessible and no backfill is required.
+      //
+      // identityClaim('sub') is REQUIRED, not cosmetic. The default owner claim
+      // is 'sub::username' (DEFAULT_UNIQUE_IDENTITY_CLAIM in
+      // graphql-auth-transformer), which would never match the bare Cognito sub
+      // that userId actually holds, locking every user out of their own data.
+      .authorization((allow) => [
+        allow.ownerDefinedIn('userId').identityClaim('sub'),
+      ]),
 
     Proposal: a
       .model({
@@ -94,9 +109,13 @@ const schema = a
         errorMessage: a.string(),
         completedAt: a.datetime(),
       })
+      // Owner-scoped. See the note on UserProfile above for why
+      // identityClaim('sub') is required and why no backfill is needed.
+      // Previously [allow.authenticated(), allow.publicApiKey()] with no .to()
+      // restriction, so the public API key granted full CRUD on every user's
+      // proposal drafts and generated content.
       .authorization((allow) => [
-        allow.authenticated(),
-        allow.publicApiKey()
+        allow.ownerDefinedIn('userId').identityClaim('sub'),
       ])
       .secondaryIndexes((index) => [
         index('userId').queryField('proposalsByUser'),
