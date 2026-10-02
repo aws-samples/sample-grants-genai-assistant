@@ -130,10 +130,22 @@ const AgentConfigTest = () => {
         addResult('Amplify Config', 'ERROR', 'Missing GraphQL endpoint in outputs');
       }
 
-      if (outputs && outputs.data && outputs.data.api_key) {
-        addResult('Amplify Config', 'SUCCESS', 'API key found');
+      // The API key authorization mode was removed, so amplify_outputs.json no
+      // longer carries data.api_key and its absence is now the correct state.
+      // Check for user pool config instead, which is what the app authenticates
+      // with.
+      if (outputs && outputs.auth && outputs.auth.user_pool_id) {
+        addResult('Amplify Config', 'SUCCESS', 'Cognito user pool configured');
       } else {
-        addResult('Amplify Config', 'ERROR', 'Missing API key in outputs');
+        addResult('Amplify Config', 'ERROR', 'Missing Cognito user pool in outputs');
+      }
+
+      if (outputs && outputs.data && outputs.data.api_key) {
+        addResult(
+          'Amplify Config',
+          'ERROR',
+          'Unexpected API key in outputs - the apiKey authorization mode should be removed'
+        );
       }
     } catch (error) {
       addResult('Amplify Config', 'ERROR', `Config error: ${error.message}`);
