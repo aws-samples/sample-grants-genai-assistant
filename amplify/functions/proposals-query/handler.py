@@ -24,6 +24,29 @@ def decimal_to_float(obj):
     else:
         return obj
 
+def get_identity_user_id(event):
+    """Cognito user ID from the VERIFIED identity on the request, or None.
+
+    AppSync populates `identity` itself from the validated JWT, so this cannot be
+    forged by the caller the way a GraphQL argument can. Mirrors
+    extract_user_identity() in kb-document-manager and the identity handling in
+    proposal-download, so all three resolvers agree on where identity comes from.
+
+    Returns None for an unauthenticated request, which callers must treat as a
+    rejection rather than falling back to an argument.
+    """
+    identity = event.get('identity') or {}
+
+    # Direct Lambda resolver with Cognito user pool auth.
+    user_id = identity.get('sub') or identity.get('username')
+    if user_id:
+        return user_id
+
+    # Some resolver configurations nest the JWT claims instead.
+    claims = identity.get('claims') or {}
+    return claims.get('sub') or claims.get('cognito:username')
+
+
 def handler(event, context):
     """
     Handle proposal queries
@@ -49,10 +72,29 @@ def handler(event, context):
     
     try:
         if field_name == 'listProposalsByUser':
-            user_id = arguments.get('userId')
+            # Derive the user from the VERIFIED Cognito identity, never from the
+            # caller's arguments.
+            #
+            # This previously read `arguments.get('userId')`, so any caller could
+            # list any other user's proposals by passing their ID. Sibling
+            # handlers (proposal-download, kb-document-manager) already did it
+            # this way; this one was the outlier.
+            user_id = get_identity_user_id(event)
             if not user_id:
-                return json.dumps({'error': 'userId is required'})
-            
+                print("❌ Rejected: no verified Cognito identity on the request")
+                return {'error': 'Unauthorized'}
+
+            # A userId argument is accepted for backwards compatibility with the
+            # existing clients, but it is only honoured when it matches the
+            # caller. Anything else is a request for someone else's data.
+            requested_user_id = arguments.get('userId')
+            if requested_user_id and requested_user_id != user_id:
+                print(
+                    "❌ Rejected: caller "
+                    f"{user_id} requested proposals for {requested_user_id}"
+                )
+                return {'error': 'Unauthorized'}
+
             # Query using GSI
             response = table.query(
                 IndexName='proposalsByUserId',

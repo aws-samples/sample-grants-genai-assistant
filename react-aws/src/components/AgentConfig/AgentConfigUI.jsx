@@ -6,8 +6,15 @@ import outputs from '../../amplify_outputs.json';
 
 // Configure Amplify
 Amplify.configure(outputs);
+
+// userPool, not apiKey. With apiKey this component authenticated as the
+// application rather than as the signed-in user, so listUserProfiles returned
+// EVERY user's profile to the browser and the component filtered client-side
+// (see loadUserProfiles below). The filter hid the data in the UI but the PII
+// had already crossed the wire. Under userPool auth the owner rule on
+// UserProfile scopes the query server-side.
 const client = generateClient({
-  authMode: 'apiKey'
+  authMode: 'userPool'
 });
 
 const AgentConfigUI = () => {

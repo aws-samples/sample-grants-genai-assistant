@@ -77,7 +77,22 @@ const schema = a
         last_updated: a.string(),
         orcid_id: a.string(),
       })
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      // Owner-scoped. Was [allow.authenticated(), allow.publicApiKey()], which
+      // let any holder of the long-lived public API key read and write every
+      // user's profile PII, and let any authenticated user read every other
+      // user's.
+      //
+      // ownerDefinedIn('userId') reuses the existing userId field rather than
+      // introducing an implicit `owner` field, so records already in DynamoDB
+      // stay accessible and no backfill is required.
+      //
+      // identityClaim('sub') is REQUIRED, not cosmetic. The default owner claim
+      // is 'sub::username' (DEFAULT_UNIQUE_IDENTITY_CLAIM in
+      // graphql-auth-transformer), which would never match the bare Cognito sub
+      // that userId actually holds, locking every user out of their own data.
+      .authorization((allow) => [
+        allow.ownerDefinedIn('userId').identityClaim('sub'),
+      ]),
 
     Proposal: a
       .model({
@@ -94,9 +109,13 @@ const schema = a
         errorMessage: a.string(),
         completedAt: a.datetime(),
       })
+      // Owner-scoped. See the note on UserProfile above for why
+      // identityClaim('sub') is required and why no backfill is needed.
+      // Previously [allow.authenticated(), allow.publicApiKey()] with no .to()
+      // restriction, so the public API key granted full CRUD on every user's
+      // proposal drafts and generated content.
       .authorization((allow) => [
-        allow.authenticated(),
-        allow.publicApiKey()
+        allow.ownerDefinedIn('userId').identityClaim('sub'),
       ])
       .secondaryIndexes((index) => [
         index('userId').queryField('proposalsByUser'),
@@ -112,7 +131,13 @@ const schema = a
         timestamp: a.timestamp(),
         ttl: a.integer(), // TTL in epoch seconds (3 days from creation)
       })
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      // Public API key removed. This model has no userId field (it is keyed by
+      // sessionId), so it cannot be owner-scoped without adding one. Dropping
+      // publicApiKey closes the unauthenticated path; the residual exposure is
+      // that an authenticated user could read another user's search events,
+      // which carry search progress rather than PII or draft content. Tracked
+      // for owner scoping as follow-up work.
+      .authorization((allow) => [allow.authenticated()]),
 
     // Grant records from search results (US grants)
     GrantRecord: a
@@ -135,7 +160,10 @@ const schema = a
         createdAt: a.datetime(),
         ttl: a.integer(), // TTL in epoch seconds (3 days from creation)
       })
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()])
+      // Public API key removed. Keyed by sessionId with no userId field, so it
+      // cannot be owner-scoped as-is. Contents are public grant postings from
+      // grants.gov plus this user's match scores. See the note on SearchEvent.
+      .authorization((allow) => [allow.authenticated()])
       .secondaryIndexes((index) => [
         index('sessionId').queryField('grantRecordsBySession'),
       ]),
@@ -189,7 +217,8 @@ const schema = a
         createdAt: a.datetime(),
         ttl: a.integer(), // TTL in epoch seconds (3 days from creation)
       })
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()])
+      // Public API key removed. Same situation as GrantRecord.
+      .authorization((allow) => [allow.authenticated()])
       .secondaryIndexes((index) => [
         index('sessionId').queryField('euGrantRecordsBySession'),
       ]),
@@ -209,7 +238,14 @@ const schema = a
         createdAt: a.datetime(),
         updatedAt: a.datetime(),
       })
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()])
+      // Owner-scoped like UserProfile and Proposal. This model has a userId
+      // field holding the Cognito sub, so the same rule applies and no backfill
+      // is needed. The discovery scheduler is unaffected: it reads configs with
+      // a boto3 table.scan() directly against DynamoDB, not through AppSync, so
+      // it never passes through these rules.
+      .authorization((allow) => [
+        allow.ownerDefinedIn('userId').identityClaim('sub'),
+      ])
       .secondaryIndexes((index) => [
         index('userId').queryField('agentConfigsByUser'),
       ]),
@@ -258,7 +294,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(grantsSearchV2))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     startEuGrantSearchV2: a
       .mutation()
@@ -267,7 +303,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(euGrantsSearchV2))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     // Agent Discovery Mutations
     triggerAgentDiscovery: a
@@ -277,7 +313,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(agentDiscoverySearch))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     processAgentDiscoveryUpdate: a
       .mutation()
@@ -286,7 +322,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(agentDiscoveryUpdate))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     // S3 Bucket Operations
     listDiscoveryResults: a
@@ -465,7 +501,7 @@ const schema = a
       })
       .returns(a.ref('SearchResponse'))
       .handler(a.handler.function(kbSearch))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     // Knowledge Base Document Management - custom types and operations
 
@@ -522,7 +558,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(kbDocumentManager))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     // Real-time subscription for document status changes
     onDocumentStatusChanged: a
@@ -573,7 +609,7 @@ const schema = a
       .query()
       .returns(a.json())
       .handler(a.handler.function(promptManager))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     getPrompt: a
       .query()
@@ -582,7 +618,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(promptManager))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     testPrompt: a
       .query()
@@ -592,7 +628,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(promptManager))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     // Proposal Generation - AgentCore Native (No SQS)
     generateProposal: a
@@ -602,7 +638,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(proposalGenerationAgentcore))
-      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated()]),
 
     // Proposal Queries
     listProposalsByUser: a
@@ -634,8 +670,16 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
-    apiKeyAuthorizationMode: {
-      expiresInDays: 365,
-    },
+    // apiKeyAuthorizationMode removed.
+    //
+    // It provisioned a 365-day API key that was an accepted authorization mode
+    // for the whole API. No model or operation grants publicApiKey any more, and
+    // nothing consumes the key: the frontend authenticates with the user pool,
+    // and the Lambdas and AgentCore agents sign their AppSync calls with IAM
+    // SigV4 (see appsync_config.py, "api_key removed - use IAM auth").
+    //
+    // Leaving the mode declared would keep issuing a long-lived credential that
+    // ships to the browser inside amplify_outputs.json, which is the access path
+    // the original finding turned on.
   },
 });
