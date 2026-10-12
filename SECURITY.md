@@ -28,12 +28,11 @@ their own AWS account. There is no AWS-operated instance of this application.
 Fixes land on the `main` branch. Because a deployment is a copy of this code running
 in your account, **a deployed instance does not pick up a fix until you redeploy it.**
 
-Security fixes are communicated in three places:
+Security fixes are communicated in two places:
 
-1. A [GitHub Security Advisory](../../security/advisories) on this repository
-2. A notice at the top of the [README](README.md) when action is required by anyone
+1. A notice at the top of the [README](README.md) when action is required by anyone
    who has already deployed
-3. A git tag on the fixing commit, so you can identify what your deployment is based on
+2. A git tag on the fixing commit, so you can identify what your deployment is based on
 
 Before this policy was added, the repository carried no tags, so instances deployed
 earlier cannot be identified by version. If you are unsure what your deployment is
