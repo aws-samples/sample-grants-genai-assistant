@@ -3,11 +3,16 @@
 
 # **Note**: This is sample code for non-production usage. You should work with your security and legal teams to meet your organizational security, regulatory, and compliance requirements before deployment.
 
-> ## ⚠️ Security notice — redeploy required if you deployed before October 2026
+> ## ⚠️ Security notice — redeploy required if you deployed before `v1.0.0`
 >
-> An access control issue has been fixed. If you deployed this sample **before
-> October 2026, your instance is affected and you should redeploy from the current
-> `main`.** Redeploying is the only way a running instance picks up the fix.
+> An access control issue has been fixed in **`v1.0.0`** (commit `c968487`). If you
+> deployed this sample from **any commit before that, your instance is affected and
+> you should redeploy.** Redeploying is the only way a running instance picks up the
+> fix.
+>
+> The repository carried no tags before `v1.0.0`, so an earlier deployment cannot be
+> identified by version. If you are unsure, compare the commit you deployed from
+> against `main`, or simply redeploy from the current `main`.
 >
 > **What was wrong.** The `UserProfile`, `Proposal` and `AgentConfig` GraphQL models
 > were readable and writable using the application's own public API key, which is
@@ -23,7 +28,7 @@
 > `test_user` account has nothing to disclose. There is no AWS-operated instance of
 > this application, so this affects self-deployed instances only.
 >
-> **How to fix it.** Redeploy from the current `main` — see
+> **How to fix it.** Redeploy from `main` or from the `v1.0.0` tag — see
 > [Updating the Stack](install_docs/maintenance/UPDATING.md). The fix scopes these
 > models to their owner and removes public API key access from the API entirely. No
 > data migration is required and existing records remain accessible.
