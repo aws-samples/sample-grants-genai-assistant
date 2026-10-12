@@ -3,6 +3,33 @@
 
 # **Note**: This is sample code for non-production usage. You should work with your security and legal teams to meet your organizational security, regulatory, and compliance requirements before deployment.
 
+> ## ⚠️ Security notice — redeploy required if you deployed before October 2026
+>
+> An access control issue has been fixed. If you deployed this sample **before
+> October 2026, your instance is affected and you should redeploy from the current
+> `main`.** Redeploying is the only way a running instance picks up the fix.
+>
+> **What was wrong.** The `UserProfile`, `Proposal` and `AgentConfig` GraphQL models
+> were readable and writable using the application's own public API key, which is
+> issued for 365 days and is present in the configuration served to the browser. In
+> an affected deployment, any user of the application — and anyone who obtained that
+> key — could read and modify **every** user's researcher profile (including name,
+> email, institution, ORCID and funding history) and **every** user's grant proposal
+> drafts, regardless of who owned them. A related gap let a caller list another
+> user's proposals by passing their user ID.
+>
+> **Who is affected.** Only deployments holding data for more than one person are
+> meaningfully exposed. A single-user or demo deployment with only the seeded
+> `test_user` account has nothing to disclose. There is no AWS-operated instance of
+> this application, so this affects self-deployed instances only.
+>
+> **How to fix it.** Redeploy from the current `main` — see
+> [Updating the Stack](install_docs/maintenance/UPDATING.md). The fix scopes these
+> models to their owner and removes public API key access from the API entirely. No
+> data migration is required and existing records remain accessible.
+>
+> Reporting policy and how security fixes are published: [SECURITY.md](SECURITY.md).
+
 ## Important Disclaimers
 - The stack that these templates create are for demonstration purposes only
 - It should be deployed in a non-production account with no other resources
