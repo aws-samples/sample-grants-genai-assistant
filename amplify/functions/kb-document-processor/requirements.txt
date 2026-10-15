@@ -3,7 +3,7 @@
 # When bumping this version, you must also re-vendor the source:
 #   rm -rf pypdf pypdf-*.dist-info
 #   pip3 install pypdf==<version> -t . --no-deps
-pypdf==6.8.0
+pypdf==6.10.2
 
 # Note: boto3/botocore use default Lambda Python 3.12 runtime versions
 # No need to vendor - bedrock-agent client works with runtime boto3
